@@ -66,14 +66,15 @@ namespace fpga_link1 {
 
             static const int kIdleSleep = 1000; // 1000 us = 1 ms
 
+            bool initialized_;
             pthread_t thread_;
             pthread_attr_t thread_attr_;
 
             pthread_mutex_t lock_;
             std::string thread_name_;
-            std::string device_;
-
             bool thread_exit_;
+
+            std::string device_;
 
             static 
             void* ThreadFn(void* obj);

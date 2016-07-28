@@ -3,11 +3,14 @@
  * Programa de manipulación de bits y registros de una FPGA con el diseño FPGALINK1.
  * Ver el directorio vhdl/
  *
+ *
+ *
  */
 
 #include <stdint.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <stdint.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -16,30 +19,91 @@
 
 using fpga_link1::FpgaLink1;
 
+
 // Bus I2C y 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1* driver = NULL;
+FpgaLink1* com = NULL;
+
+void ShowUsage();
+
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
 
+      bool read;
+
+      if (argc < 2) {
+            ShowUsage();
+            return 0;
+      } else if (argc == 2) {
+            read = true;
+      } else {
+            read = false;
+      }
+
+
+      com = new FpgaLink1("/dev/tty");
+      if (com->Init() != 0) {
+            printf("Error initializing comunication driver\n");
+            return 1;
+      }
+
+
+      FpgaLink1::Error e;
+      int reg;
+      int val;
+      uint8_t ui8;
+
+      if (read) {
+            reg = atoi(argv[1]);
+
+            e = com->MemoryRD(reg, &ui8);
+            if (e != FpgaLink1::kErrorNo) {
+                  printf("error\n");
+                  return 1;
+            }
+
+            printf("0x%02x\n", ui8);
+      } else {
+            reg = atoi(argv[1]);
+            val = atoi(argv[2]);
+            ui8 = static_cast<uint8_t>(val);
+            e = com->MemoryWR(reg,  ui8);
+            if (e != FpgaLink1::kErrorNo) {
+                  printf("error\n");
+                  return 1;                  
+            }
+
+            printf("ok\n");
+      }
 
       return 0;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void printhelp(const char* cmd, char* i2cbus_fname, uint8_t iofpga_addr) {
-      printf("\n"
-             "Usage: fpgalink1 <register> [value]\n"
-             "\n"
-             "<register>  Number of the FPGA register to read from or to write to. In decimal or hexadecimal (0x)\n"
-             "[value]     Value that will be written, in decimal o hexadecimal (0x) format"
-             "\n"
-             "Actions: (executed in the order they are written in command line)\n"
-             " --bus=<i2c-device>         Serial Port (default: /dev/ttyS0)\n"
-             " --help                     Show this help\n"
-             "\n");
+void ShowUsage() {
+      printf("\n");
+      printf("Usage:\n");
+      printf("test_fpgalink1 [--help] [--port]] <register> [values]\n");
+      printf("\n");
+      printf("    <register>            Number of the FPGA register to read from or to write to\n");
+      printf("    [values]              Value or values that will be written separated by space characters");
+      printf("\n");
+      printf("    --port=<tty-device>   Serial port connected to FPGA (default: /dev/ttyS0)\n");
+      printf("    --help                Show this help\n");
+      printf("\n");
+      printf("EXAMPLES:\n");
+      printf("\n");
+      printf("    test_fpgalink1 0x1c 0x0a 0x0b\n");
+      printf("    (writes in regiser 0x1c the value 0x0a and in register 0x1d the value 0x0b)\n");
+      printf("\n");
+      printf("    test_fpgalink1 0x1a\n");
+      printf("    (read the value of regiser 0x1a)\n");
+      printf("\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
