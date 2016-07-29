@@ -4,7 +4,6 @@
 
 #include <pthread.h>
 #include <stdint.h>
-
 #include <string>
 
 
@@ -27,9 +26,24 @@ namespace fpga_link1 {
        */
       class FpgaLink1 {
       public:
+            
             enum Error {
+                  // No error.
                   kErrorNo,
-                  kErrorIO
+                 
+                  // The specified device does not exist.
+                  kErrorNoSuchDevice,
+
+                  // One or more parameters are wrong, for example: a data buffer pointer is null or data buffer size is
+                  // too large (outside the permited range).
+                  kErrorWrongParameters,
+
+                  
+                  // Input/output error, for example: during read(), write(), poll(), etc, operations.
+                  kErrorIO,
+
+                  // Other, not specified, error.
+                  kErrorGeneric
             };
 
 

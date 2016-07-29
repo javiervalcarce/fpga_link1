@@ -1,3 +1,4 @@
+// Hi Emacs, this is -*- mode: c++; tab-width: 6; indent-tabs-mode: nil; c-basic-offset: 6 -*-
 #include "fpga_link1.h"
 #include <unistd.h>
 #include <cassert>
