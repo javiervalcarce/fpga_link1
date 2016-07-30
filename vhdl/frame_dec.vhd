@@ -1,7 +1,7 @@
 -- Hi Emacs, this is -*- mode: vhdl; vhdl-basic-offset: 6 -*-
 ----------------------------------------------------------------------------------------------------
 --
--- Serial Line IP decoder.
+-- Byte Stream Serialized 56-bit Frame Decoder
 --
 -- 
 --
@@ -33,7 +33,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 -- Main Entity for KCUART_TX
 --
 
-entity slip_dec is
+entity frame56_dec is
       port (
             reset               : in    std_logic;
             clk                 : in    std_logic;
@@ -41,13 +41,13 @@ entity slip_dec is
             data_o              : out   std_logic_vector(7 downto 0);
             valid               : out   std_logic;       
             ready               : out   std_logic);
-end slip_dec;
+end frame56_dec;
 
 ------------------------------------------------------------------------------------
 --
 -- Start of Main Architecture for KCUART_TX
 --	 
-architecture rtl of slip_dec is
+architecture rtl of frame56_dec is
 --
       signal data_01            : std_logic;
       signal data_23            : std_logic;
@@ -56,7 +56,7 @@ architecture rtl of slip_dec is
       --attribute INIT of mux1_lut      : label is "E4FF";
 
 begin
-      
+     
 
 
 end rtl;
