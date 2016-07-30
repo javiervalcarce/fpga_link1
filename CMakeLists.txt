@@ -33,4 +33,7 @@ add_library(fpgalink1 SHARED ${fpgalink1_SRCS})
 set_target_properties(fpgalink1 PROPERTIES VERSION ${FPGALINK1_VERSION_STRING})
 
 add_executable(test_fpgalink1 ${test_fpgalink1_SRCS})
-target_link_libraries(test_fpgalink1 fpgalink1 m pthread rt)
+#target_link_libraries(test_fpgalink1 fpgalink1 m pthread rt)
+
+target_link_libraries(test_fpgalink1 fpgalink1 m pthread)
+

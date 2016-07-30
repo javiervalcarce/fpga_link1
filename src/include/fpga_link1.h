@@ -10,6 +10,7 @@
 
 namespace fpga_link1 {
 
+      
       /**
        * An object of this class lets you send and receive data to an FPGA. At the FPGA side is required a specific
        * hardware to process and respond the commands sent by this software. See vhdl/ directory.
@@ -33,6 +34,12 @@ namespace fpga_link1 {
                  
                   // The specified device does not exist.
                   kErrorNoSuchDevice,
+
+                  // Error while creating a the internal thread (with pthread_create).
+                  kErrorThreadCreation,
+                  
+                  // Error during calling tcgetattr(), settcaatr() and other <termios.h> apis
+                  kErrorTermios,
 
                   // One or more parameters are wrong, for example: a data buffer pointer is null or data buffer size is
                   // too large (outside the permited range).
@@ -89,7 +96,8 @@ namespace fpga_link1 {
             bool thread_exit_;
 
             std::string device_;
-
+            int fd_;
+            
             static 
             void* ThreadFn(void* obj);
             void* ThreadFn();

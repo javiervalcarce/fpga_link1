@@ -12,9 +12,12 @@
 #include <getopt.h>
 #include <stdint.h>
 
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cassert>
+
 #include "fpga_link1.h"
 
 using fpga_link1::FpgaLink1;
@@ -23,16 +26,38 @@ using fpga_link1::FpgaLink1;
 // Bus I2C y 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1* com = NULL;
+//const std::string kSerialPort("/dev/tty.usbserial-FTE5IS5D");  // With Flow Control
+const std::string kSerialPort("/dev/cu.usbserial-FTE5IS5D");   // Without Flow Control
+
 
 void ShowUsage();
 
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Test1() {
+      FpgaLink1::Error e;
+      
+      
+      com = new FpgaLink1(kSerialPort);
+      e = com->Init();
+      
+      if (e != FpgaLink1::kErrorNo) {
+            printf("Error initializing comunication driver (%d)\n", static_cast<int>(e));
+            return 1;
+      }
 
+      printf("Sending a command frame over serial port %s\n", kSerialPort.c_str());
+      assert(com->MemoryWR(64, 0xab) == 0);
+      return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
 
+      Test1();
+      return 1;
+      
       bool read;
 
       if (argc < 2) {
@@ -45,7 +70,7 @@ int main(int argc, char* argv[]) {
       }
 
 
-      com = new FpgaLink1("/dev/tty");
+      com = new FpgaLink1(kSerialPort);
       if (com->Init() != 0) {
             printf("Error initializing comunication driver\n");
             return 1;
