@@ -33,9 +33,9 @@ struct Command {
 
       // Data to write to or read from a microelectronic system register.
       union {
-	    uint8_t data8;
-	    uint16_t data16;
-	    uint32_t data32;
+            uint8_t data8;
+            uint16_t data16;
+            uint32_t data32;
       };
 
             
@@ -52,29 +52,40 @@ struct SerializedCommand {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
   bit 69              64 63               40 39                              8 7                            0
-      +------------------------------------------------------------------------------------------------------+
-      | OPCODE (6 bits) | ADDRESS (24 bits) | DATA (32 bits)                  | CRC (8 bits)                 |
-      +------------------------------------------------------------------------------------------------------+
- */
+  +------------------------------------------------------------------------------------------------------+
+  | OPCODE (6 bits) | ADDRESS (24 bits) | DATA (32 bits)                  | CRC (8 bits)                 |
+  +------------------------------------------------------------------------------------------------------+
+*/
 int Encoder(Command& cmd, SerializedCommand* serialized) {
 
       uint8_t tmp[9];
       
       switch (cmd.type) {
       case kWrite8:
-	    tmp[0] = cmd.type << 4;
-	    tmp[1] = (cmd.address & 0x00ff0000) >> 16;
-	    tmp[2] = (cmd.address & 0x0000ff00) >> 8;
-	    tmp[3] = (cmd.address & 0x000000ff) >> 0;
-	    tmp[4] = cmd.data8;
-	    tmp[5] = 0x00;
-	    tmp[6] = 0x00;
-	    tmp[7] = 0x00;
-	    tmp[5] = 0xFF; // CRC
-
-	    break;
+            tmp[0] = cmd.type << 4;
+            tmp[1] = (cmd.address & 0x00ff0000) >> 16;
+            tmp[2] = (cmd.address & 0x0000ff00) >> 8;
+            tmp[3] = (cmd.address & 0x000000ff) >> 0;
+            tmp[4] = cmd.data8;
+            tmp[5] = 0x00;
+            tmp[6] = 0x00;
+            tmp[7] = 0x00;
+            tmp[5] = 0xFF; // CRC
+            break;
+          
+      case kWrite32:
+            tmp[0] = cmd.type << 4;
+            tmp[1] = (cmd.address & 0x00ff0000) >> 16;
+            tmp[2] = (cmd.address & 0x0000ff00) >> 8;
+            tmp[3] = (cmd.address & 0x000000ff) >> 0;
+            tmp[4] = (cmd.data32 & 0xff000000) >> 24;
+            tmp[5] = (cmd.data32 & 0x00ff0000) >> 16;
+            tmp[6] = (cmd.data32 & 0x0000ff00) >> 8;
+            tmp[7] = (cmd.data32 & 0x000000ff) >> 0;
+            tmp[5] = 0xFF; // CRC
+            break;
       default:
-	    assert(false);
+            assert(false);
       }
 
       serialized->size = 10;
@@ -91,7 +102,10 @@ int Encoder(Command& cmd, SerializedCommand* serialized) {
       serialized->data[2] = ((tmp[1] & 0b00000000) << 7) | ((tmp[2] & 0b11111110) >> 1);  // 0+7
       serialized->data[1] = ((tmp[1] & 0b01111111) << 0) | ((tmp[2] & 0b00000000) >> 0);  // 7+0
       serialized->data[0] = ((tmp[0] & 0b00111111) << 1) | ((tmp[1] & 0b10000000) >> 7);  // 6+1
-            
+
+      // First byte of encoded frame has its MSB set to '1', all others set to '0'.
+      serialized->data[0] |= 0b10000000;
+      
       return 0;
 }
 
@@ -120,7 +134,7 @@ FpgaLink1::~FpgaLink1() {
 
       // Terminate first the internal thread
       if (fd_ != -1) {
-	    close(fd_);
+            close(fd_);
       }
 }
 
@@ -128,6 +142,7 @@ FpgaLink1::~FpgaLink1() {
 FpgaLink1::Error FpgaLink1::Init() {
       int r;
 
+      // http://stackoverflow.com/questions/26498582/opening-a-serial-port-on-os-x-hangs-forever-without-o-nonblock-flag
       
       fd_ = open(device_.c_str(), O_RDWR);
       if (fd_ == -1) {
@@ -154,8 +169,6 @@ FpgaLink1::Error FpgaLink1::Init() {
       if (r != 0) {
             return kErrorTermios;
       }
-      
-      
 
       r = pthread_create(&thread_, &thread_attr_, FpgaLink1::ThreadFn, this);
       if (r != 0) {
@@ -190,29 +203,62 @@ FpgaLink1::Error FpgaLink1::MemoryRD(int reg, uint8_t* data, int len) {
 FpgaLink1::Error FpgaLink1::MemoryWR(int reg, uint8_t  data) {      
       assert(initialized_ == true);
 
-
       Command cmd;
       SerializedCommand octet_stream;
       
       cmd.type = kWrite8;
-      cmd.address = static_cast<uint32_t>(reg);
+      cmd.address = static_cast<uint32_t>(reg) & 0x00FFFFFF;  // 24-bit address space
       cmd.data8 = data;
 
       Encoder(cmd, &octet_stream);
       
       int n;
 
+      printf("");
+      
       n = 0;
       do {
-	    n += write(fd_, octet_stream.data, octet_stream.size);
-	    if (n == -1) {
-		  return kErrorIO;
-	    }
+            n += write(fd_, octet_stream.data, octet_stream.size);
+            if (n == -1) {
+                  return kErrorIO;
+            }
       } while (n < octet_stream.size);
       
       return kErrorNo;
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
+      assert(initialized_ == true);
 
+      Command cmd;
+      SerializedCommand octet_stream;
+      
+      cmd.type = kWrite32;
+      cmd.address = static_cast<uint32_t>(reg) & 0x00FFFFFF;  // 24-bit address space
+      cmd.data32 = data;
+
+      Encoder(cmd, &octet_stream);
+      
+      int n;
+
+      printf("Sending this: ");
+      for (int i = 0; i < octet_stream.size; i++) {
+            printf("0x%02x ", octet_stream.data[i]);
+      }
+      printf("\n");
+
+      
+      n = 0;
+      do {
+            n += write(fd_, octet_stream.data, octet_stream.size);
+            if (n == -1) {
+                  return kErrorIO;
+            }
+      } while (n < octet_stream.size);
+      
+      return kErrorNo;
+      
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::Error FpgaLink1::MemoryWR(int reg, uint8_t* data, int len) {

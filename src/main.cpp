@@ -48,7 +48,7 @@ int Test1() {
       }
 
       printf("Sending a command frame over serial port %s\n", kSerialPort.c_str());
-      assert(com->MemoryWR(64, 0xab) == 0);
+      assert(com->MemoryWR32(0x000a0b0c, 0x01020304) == 0);
       return 0;
 }
 

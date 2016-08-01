@@ -76,7 +76,9 @@ namespace fpga_link1 {
             Error MemoryRD(int reg, uint8_t* data, int len);
 
             //
-            Error MemoryWR(int reg, uint8_t  data);
+            Error MemoryWR(int reg, uint8_t data);
+            Error MemoryWR32(int reg, uint32_t data);
+            
             Error MemoryWR(int reg, uint8_t* data, int len);
 
             //
