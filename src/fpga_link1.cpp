@@ -75,14 +75,21 @@ FpgaLink1::Error FpgaLink1::Init() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1::Error FpgaLink1::MemoryRD(int reg, uint8_t* data) {
+FpgaLink1::Error FpgaLink1::MemoryRD08(int reg, uint8_t* data) {
       assert(initialized_ == true);
       *data = 0xfe;
       return kErrorNo;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+FpgaLink1::Error FpgaLink1::MemoryRD32(int reg, uint32_t* data) {
+      assert(initialized_ == true);
+      *data = 0xfe;
+      return kErrorNo;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
 FpgaLink1::Error FpgaLink1::MemoryRD(int reg, uint8_t* data, int len) {
       assert(initialized_ == true);
       int i;
@@ -93,9 +100,10 @@ FpgaLink1::Error FpgaLink1::MemoryRD(int reg, uint8_t* data, int len) {
 
       return kErrorNo;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1::Error FpgaLink1::MemoryWR(int reg, uint8_t  data) {      
+FpgaLink1::Error FpgaLink1::MemoryWR08(int reg, uint8_t  data) {      
       assert(initialized_ == true);
 
       Command cmd;
@@ -148,16 +156,35 @@ FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
       if (n != octet_stream.size) {
             return kErrorIO;
       }
+
+      // Receive
+      n = RobustRD(fd_, octet_stream.data, octet_stream.size, 1000);
+      if (n != octet_stream.size) {
+            return kErrorIO;
+      }
+
+      Decoder(cmd, &octet_stream);
+
+
+      if (cmd.type != kWrite32Nack) {
+            return kErrorProtocol;
+      }
+
+      if (cmd.type != kWrite32Ack) {
+            return kErrorProtocol;
+      }
       
       return kErrorNo;
       
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
 FpgaLink1::Error FpgaLink1::MemoryWR(int reg, uint8_t* data, int len) {
       assert(initialized_ == true);
       return kErrorNo;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::Error FpgaLink1::FifoRD(int reg, uint8_t* data, int len) {
@@ -178,6 +205,10 @@ void* FpgaLink1::ThreadFn(void* obj) {
 }
 void* FpgaLink1::ThreadFn() {
 
+      uint8_t buffer[64];
+      int n;
+            
+      
       // Cambio el nombre de este hilo ejecutor de tareas por el de la nueva tarea que voy a ejecutar, esto
       // es EXTREMADAMENTE útil cuando depuramos el proceso con gdb (comando info threads)
 #ifdef __linux__
@@ -189,13 +220,45 @@ void* FpgaLink1::ThreadFn() {
 
       //int wait_for;
       //int r;
+      Command cmd;
+      SerializedCommand octet_stream;
+      
+      cmd.type = kIdle;
+      cmd.address = 0x00FFFFFF;  // 24-bit address space
+      cmd.data32 = 0xAABBCCDD;
 
+      Encoder(cmd, &octet_stream);
+
+      watch_.Reset();
+      watch_.Start();
+      
       while (1) {
 
             if (thread_exit_) {
                   break;
             }
-            usleep(1e6);
+
+            if (watch_.ElapsedMilliseconds() > 200) {
+            
+                  n = RobustWR(fd_, buffer, 10, 200);
+                  if (n == 0) {
+                        // Timeout
+                  }
+
+                  watch_.Reset();
+            }
+            
+
+            //poll
+
+            n = RobustRD(fd_, buffer, 10, 50);
+            if (n == 0) {
+                  // Timeout
+            } else {
+                  printf("We have received something (%d characters)!\n", n);
+            }
+            
+            
       }
 
       return NULL;

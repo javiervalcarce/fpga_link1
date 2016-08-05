@@ -18,7 +18,7 @@ set (FPGALINK1_VERSION_MINOR 1)
 set (FPGALINK1_VERSION_MICRO 0)
 set (FPGALINK1_VERSION_STRING ${FPGALINK1_VERSION_MAJOR}.${FPGALINK1_VERSION_MINOR}.${FPGALINK1_VERSION_MICRO})
 
-set (fpgalink1_SRCS src/fpga_link1.cpp src/codec.cpp)
+set (fpgalink1_SRCS src/fpga_link1.cpp src/codec.cpp src/stopwatch.cpp)
 set (test_fpgalink1_SRCS src/main.cpp)
 
 set (CMAKE_VERBOSE_MAKEFILE on)

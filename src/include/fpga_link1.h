@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string>
 
+#include "stopwatch.h"
 
 
 namespace fpga_link1 {
@@ -45,9 +46,15 @@ namespace fpga_link1 {
                   // too large (outside the permited range).
                   kErrorWrongParameters,
 
+
+                  // Device has informed that the requested read or write operation was unsuccesful (nack)
+                  kErrorOperationNotAcknowledged,
                   
-                  // Input/output error, for example: during read(), write(), poll(), etc, operations.
+                  // Input/output error, for example: during read(), write(), poll(), etc, operations. Comunications.
                   kErrorIO,
+
+                  // Protocol error, device has sent an unexpected frame which does not correspond with the sent one.
+                  kErrorProtocol,
 
                   // Other, not specified, error.
                   kErrorGeneric
@@ -72,14 +79,15 @@ namespace fpga_link1 {
             Error Init();
 
 
-            Error MemoryRD(int reg, uint8_t* data);
-            Error MemoryRD(int reg, uint8_t* data, int len);
+            Error MemoryRD08(int reg, uint8_t* data);
+            Error MemoryRD32(int reg, uint32_t* data);
+            //Error MemoryRD(int reg, uint8_t* data, int len);
 
             //
-            Error MemoryWR(int reg, uint8_t data);
+            Error MemoryWR08(int reg, uint8_t data);
             Error MemoryWR32(int reg, uint32_t data);
             
-            Error MemoryWR(int reg, uint8_t* data, int len);
+            //Error MemoryWR(int reg, uint8_t* data, int len);
 
             //
             Error FifoRD(int reg, uint8_t* data, int len);
@@ -92,11 +100,12 @@ namespace fpga_link1 {
             bool initialized_;
             pthread_t thread_;
             pthread_attr_t thread_attr_;
-
+            
             pthread_mutex_t lock_;
             std::string thread_name_;
             bool thread_exit_;
 
+            Stopwatch watch_;
             std::string device_;
             int fd_;
             
@@ -106,6 +115,8 @@ namespace fpga_link1 {
 
             int RobustWR(int fd, uint8_t* s, int n, int timeout_ms);
             int RobustRD(int fd, uint8_t* s, int n, int timeout_ms);
+
+
 
       };
 

@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
       if (read) {
             reg = atoi(argv[1]);
 
-            e = com->MemoryRD(reg, &ui8);
+            e = com->MemoryRD08(reg, &ui8);
             if (e != FpgaLink1::kErrorNo) {
                   printf("error\n");
                   return 1;
@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
             reg = atoi(argv[1]);
             val = atoi(argv[2]);
             ui8 = static_cast<uint8_t>(val);
-            e = com->MemoryWR(reg,  ui8);
+            e = com->MemoryWR32(reg,  ui8);
             if (e != FpgaLink1::kErrorNo) {
                   printf("error\n");
                   return 1;                  

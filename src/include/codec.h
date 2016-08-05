@@ -7,14 +7,26 @@
 namespace fpga_link1 {
 
 enum CommandType {
-      kRead8     = 0x01,
-      kRead16    = 0x02,
-      kRead32    = 0x03,
-      kWrite8    = 0x04,
-      kWrite16   = 0x05,
-      kWrite32   = 0x06,
-      kInterrupt = 0x07,
-      kIdle      = 0x08
+
+      // Querys
+      kRead8       = 0x01,
+      kRead32      = 0x02,     
+      kWrite8      = 0x03,
+      kWrite32     = 0x04,
+
+      // Responses
+      kRead8Ack    = 0x05,
+      kRead8Nack   = 0x06,
+      kRead32Ack   = 0x07,
+      kRead32Nack  = 0x08,
+
+      kWrite8Ack   = 0x09,
+      kWrite8Nack  = 0x0a,
+      kWrite32Ack  = 0x0b,
+      kWrite32Nack = 0x0c,
+      
+      kInterrupt   = 0x0d,
+      kIdle        = 0x0e
 };
 
 
