@@ -14,7 +14,6 @@ using fpga_link1::FpgaLink1;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::FpgaLink1(std::string device) {
-
       device_ = device;
       fd_ = -1;
       thread_name_ = "fpga_link1";
@@ -28,7 +27,6 @@ FpgaLink1::FpgaLink1(std::string device) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::~FpgaLink1() {
-
       // Terminate first the internal thread
       if (fd_ != -1) {
             close(fd_);
@@ -123,6 +121,8 @@ FpgaLink1::Error FpgaLink1::MemoryWR(int reg, uint8_t  data) {
       
       return kErrorNo;
 }
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
       assert(initialized_ == true);
@@ -144,14 +144,10 @@ FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
       }
       printf("\n");
 
-      
-      n = 0;
-      do {
-            n += write(fd_, octet_stream.data, octet_stream.size);
-            if (n == -1) {
-                  return kErrorIO;
-            }
-      } while (n < octet_stream.size);
+      n = RobustWR(fd_, octet_stream.data, octet_stream.size, 1000);
+      if (n != octet_stream.size) {
+            return kErrorIO;
+      }
       
       return kErrorNo;
       
@@ -184,8 +180,6 @@ void* FpgaLink1::ThreadFn() {
 
       // Cambio el nombre de este hilo ejecutor de tareas por el de la nueva tarea que voy a ejecutar, esto
       // es EXTREMADAMENTE útil cuando depuramos el proceso con gdb (comando info threads)
-
-
 #ifdef __linux__
       pthread_setname_np(thread_, thread_name_.c_str());
 #else
@@ -206,4 +200,91 @@ void* FpgaLink1::ThreadFn() {
 
       return NULL;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// read() y write() son funciones de muy bajo nivel...
+//
+// Funciones de lectura y escritura de alto nivel, con reintento hasta completar los |n| caracteres y 
+// temporización de 100 ms por si acaso. Devuelven |n| si todo fue bien, o un número inferior si algo
+// falló
+//
+int FpgaLink1::RobustWR(int fd, uint8_t* s, int n, int timeout_ms) {
+
+      int sr;
+      int wr;
+      int total;
+      struct timeval timeout;
+      fd_set set;
+
+      FD_ZERO(&set);          // clear the set 
+      FD_SET(fd, &set);       // add our file descriptor to the set
+
+      timeout.tv_sec  = (timeout_ms / 1000); 
+      timeout.tv_usec = (timeout_ms % 1000) * 1000;   
+
+      total = 0;
+      while (total < n) {
+            
+            sr = select(fd + 1, NULL, &set, NULL, &timeout);            
+            
+            /**/ if (sr == -1) { 
+                  // Error E/S
+                  return total; 
+            } else if (sr ==  0) { 
+                  // Timeout!
+                  return total; 
+            }
+
+            wr = (int) write(fd, (const void*) (s + total), n - total);
+            if (wr == -1) {
+                  return total;
+            }
+
+            total += wr;
+      }
+
+      return total;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int FpgaLink1::RobustRD(int fd, uint8_t* s, int n, int timeout_ms) {
+
+      int sr;
+      int rd;
+      int total;
+      struct timeval timeout;
+      fd_set set;
+
+      FD_ZERO(&set);          // clear the set 
+      FD_SET(fd, &set);       // add our file descriptor to the set
+
+      timeout.tv_sec  = (timeout_ms / 1000); 
+      timeout.tv_usec = (timeout_ms % 1000) * 1000;   
+
+      total = 0;
+      while (total < n) {
+
+            sr = select(fd + 1, &set, NULL, NULL, &timeout);            
+            /**/ if (sr == -1) { 
+                  //printf("rd sel-1\n");
+                  // select error 
+                  return total; 
+            } else if (sr ==  0) { 
+                  //printf("rd sel 0\n");
+                  // timeout
+                  return total; 
+            }  
+
+            rd = (int) read(fd, (void*) (s + total), n - total);
+            if (rd == -1) {
+                  return total;
+            }
+
+            total += rd;
+      }
+
+      return total;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

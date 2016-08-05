@@ -104,6 +104,9 @@ namespace fpga_link1 {
             void* ThreadFn(void* obj);
             void* ThreadFn();
 
+            int RobustWR(int fd, uint8_t* s, int n, int timeout_ms);
+            int RobustRD(int fd, uint8_t* s, int n, int timeout_ms);
+
       };
 
 }
