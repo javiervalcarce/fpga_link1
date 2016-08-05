@@ -18,7 +18,7 @@ set (FPGALINK1_VERSION_MINOR 1)
 set (FPGALINK1_VERSION_MICRO 0)
 set (FPGALINK1_VERSION_STRING ${FPGALINK1_VERSION_MAJOR}.${FPGALINK1_VERSION_MINOR}.${FPGALINK1_VERSION_MICRO})
 
-set (fpgalink1_SRCS src/fpga_link1.cpp)
+set (fpgalink1_SRCS src/fpga_link1.cpp src/codec.cpp)
 set (test_fpgalink1_SRCS src/main.cpp)
 
 set (CMAKE_VERBOSE_MAKEFILE on)
@@ -34,6 +34,10 @@ set_target_properties(fpgalink1 PROPERTIES VERSION ${FPGALINK1_VERSION_STRING})
 
 add_executable(test_fpgalink1 ${test_fpgalink1_SRCS})
 #target_link_libraries(test_fpgalink1 fpgalink1 m pthread rt)
-
 target_link_libraries(test_fpgalink1 fpgalink1 m pthread)
+
+
+# Test unitarios
+add_executable(test_codec src/test_codec.cpp src/codec.cpp)
+
 
