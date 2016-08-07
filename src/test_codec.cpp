@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
       assert((ser.data[9] & 0x80) == 0x00);
 
 
-      fpga_link1::Decoder(cmd2, &ser);
+      fpga_link1::Decoder(&cmd2, ser);
 
       assert(memcmp((char*) &cmd1, (char*) &cmd2, sizeof(fpga_link1::Command)) == 0);
       //assert(cmd1 == cmd2);

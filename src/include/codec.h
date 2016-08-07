@@ -56,7 +56,7 @@ struct SerializedCommand {
 
 
 int Encoder(Command& cmd, SerializedCommand* serialized);
-int Decoder(Command& cmd, SerializedCommand* serialized);
+int Decoder(Command* cmd, SerializedCommand& serialized);
 
 
 }

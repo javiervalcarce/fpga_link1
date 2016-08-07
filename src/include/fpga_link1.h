@@ -7,10 +7,12 @@
 #include <string>
 
 #include "stopwatch.h"
+#include "codec.h"
 
 
 namespace fpga_link1 {
 
+      typedef void (*InterruptCallback)(uint16_t interrupt_number, uint32_t code);
       
       /**
        * An object of this class lets you send and receive data to an FPGA. At the FPGA side is required a specific
@@ -78,7 +80,8 @@ namespace fpga_link1 {
              */
             Error Init();
 
-
+            Error RegisterInterruptCallback(InterruptCallback f);
+            
             Error MemoryRD08(int reg, uint8_t* data);
             Error MemoryRD32(int reg, uint32_t* data);
             //Error MemoryRD(int reg, uint8_t* data, int len);
@@ -95,8 +98,10 @@ namespace fpga_link1 {
 
       private:
 
-            static const int kIdleSleep = 1000; // 1000 us = 1 ms
-
+            static const int kWaitForValidSleep = 1000;       // us, 1000 us = 1 ms
+            static const int kIdleSleep = 1000;       // us, 1000 us = 1 ms
+            static const int kIdleLinkPeriod = 500;   // ms, 500 ms = 1 s
+            
             bool initialized_;
             pthread_t thread_;
             pthread_attr_t thread_attr_;
@@ -108,6 +113,17 @@ namespace fpga_link1 {
             Stopwatch watch_;
             std::string device_;
             int fd_;
+
+            InterruptCallback func_;
+
+            // Send and receive buffers, _valid variables indicates that the corresponding buffers are not empty.
+            // Rx buffer, capacity = 1 command
+            Command rx_command_;
+            bool    rx_command_valid_;
+
+            // Tx buffer, capacity = 1 command
+            Command tx_command_;
+            bool    tx_command_valid_;
             
             static 
             void* ThreadFn(void* obj);

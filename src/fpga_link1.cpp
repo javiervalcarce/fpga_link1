@@ -19,6 +19,9 @@ FpgaLink1::FpgaLink1(std::string device) {
       thread_name_ = "fpga_link1";
       thread_exit_ = false;
       initialized_ = false;
+      tx_command_valid_ = false;
+      rx_command_valid_ = false;
+      func_ = nullptr;
       
       pthread_attr_init(&thread_attr_);
       pthread_attr_setdetachstate(&thread_attr_, PTHREAD_CREATE_JOINABLE);  
@@ -75,6 +78,14 @@ FpgaLink1::Error FpgaLink1::Init() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+FpgaLink1::Error FpgaLink1::RegisterInterruptCallback(InterruptCallback f) {
+      assert(f != nullptr);
+      func_ = f;
+      return kErrorNo;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::Error FpgaLink1::MemoryRD08(int reg, uint8_t* data) {
       assert(initialized_ == true);
       *data = 0xfe;
@@ -90,16 +101,16 @@ FpgaLink1::Error FpgaLink1::MemoryRD32(int reg, uint32_t* data) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
-FpgaLink1::Error FpgaLink1::MemoryRD(int reg, uint8_t* data, int len) {
-      assert(initialized_ == true);
-      int i;
+  FpgaLink1::Error FpgaLink1::MemoryRD(int reg, uint8_t* data, int len) {
+  assert(initialized_ == true);
+  int i;
 
-      for (i = 0; i < len; i++) {
-            data[i] = 0xfe;
-      }
+  for (i = 0; i < len; i++) {
+  data[i] = 0xfe;
+  }
 
-      return kErrorNo;
-}
+  return kErrorNo;
+  }
 */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -136,54 +147,53 @@ FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
       assert(initialized_ == true);
 
       Command cmd;
-      SerializedCommand octet_stream;
       
       cmd.type = kWrite32;
       cmd.address = static_cast<uint32_t>(reg) & 0x00FFFFFF;  // 24-bit address space
       cmd.data32 = data;
 
-      Encoder(cmd, &octet_stream);
+      // Empty rx buffer if not empty
+      pthread_mutex_lock(&lock_);
+      if (rx_command_valid_) {
+            rx_command_valid_ = false;
+      } 
+      pthread_mutex_unlock(&lock_);
+
+      // Leave the tx command in the tx buffer
+      pthread_mutex_lock(&lock_);
+      tx_command_ = cmd;
+      tx_command_valid_ = true; 
+      pthread_mutex_unlock(&lock_);
+            
       
-      int n;
+      // Wait for the reception of the answer in the rx buffer
+      while (1) {
+            pthread_mutex_lock(&lock_);
+            if (rx_command_valid_) {
+                  cmd = rx_command_;
+                  rx_command_valid_ = false;
+                  pthread_mutex_unlock(&lock_);
+                  break;
+            } 
+            pthread_mutex_unlock(&lock_);
 
-      printf("Sending this: ");
-      for (int i = 0; i < octet_stream.size; i++) {
-            printf("0x%02x ", octet_stream.data[i]);
-      }
-      printf("\n");
-
-      n = RobustWR(fd_, octet_stream.data, octet_stream.size, 1000);
-      if (n != octet_stream.size) {
-            return kErrorIO;
-      }
-
-      // Receive
-      n = RobustRD(fd_, octet_stream.data, octet_stream.size, 1000);
-      if (n != octet_stream.size) {
-            return kErrorIO;
+            usleep(kWaitForValidSleep);
       }
 
-      Decoder(cmd, &octet_stream);
-
-
-      if (cmd.type != kWrite32Nack) {
-            return kErrorProtocol;
-      }
 
       if (cmd.type != kWrite32Ack) {
             return kErrorProtocol;
       }
       
-      return kErrorNo;
-      
+      return kErrorNo;      
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
-FpgaLink1::Error FpgaLink1::MemoryWR(int reg, uint8_t* data, int len) {
-      assert(initialized_ == true);
-      return kErrorNo;
-}
+  FpgaLink1::Error FpgaLink1::MemoryWR(int reg, uint8_t* data, int len) {
+  assert(initialized_ == true);
+  return kErrorNo;
+  }
 */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -205,12 +215,6 @@ void* FpgaLink1::ThreadFn(void* obj) {
 }
 void* FpgaLink1::ThreadFn() {
 
-      uint8_t buffer[64];
-      int n;
-            
-      
-      // Cambio el nombre de este hilo ejecutor de tareas por el de la nueva tarea que voy a ejecutar, esto
-      // es EXTREMADAMENTE útil cuando depuramos el proceso con gdb (comando info threads)
 #ifdef __linux__
       pthread_setname_np(thread_, thread_name_.c_str());
 #else
@@ -218,46 +222,112 @@ void* FpgaLink1::ThreadFn() {
       pthread_setname_np(thread_name_.c_str());
 #endif
 
-      //int wait_for;
-      //int r;
-      Command cmd;
-      SerializedCommand octet_stream;
       
-      cmd.type = kIdle;
-      cmd.address = 0x00FFFFFF;  // 24-bit address space
-      cmd.data32 = 0xAABBCCDD;
+      uint8_t tmp[16];
+      
+      int n;
+      int i;
+      int c;
+      
+      Command tx_cmd;
+      Command rx_cmd;
+      SerializedCommand tx_ser;
+      SerializedCommand rx_ser;
+      
+      tx_cmd.type = kIdle;
+      tx_cmd.address = 0x00FFFFFF;  // 24-bit address space
+      tx_cmd.data32 = 0xAABBCCDD;
 
-      Encoder(cmd, &octet_stream);
+      Encoder(tx_cmd, &tx_ser);
 
       watch_.Reset();
       watch_.Start();
+
+      c = 0;
       
       while (1) {
-
             if (thread_exit_) {
                   break;
             }
 
-            if (watch_.ElapsedMilliseconds() > 200) {
-            
-                  n = RobustWR(fd_, buffer, 10, 200);
+            // Transmission of kIdle commands every kIdleLinkPeriod just to notify that the serial link is not broken
+            if (watch_.ElapsedMilliseconds() > kIdleLinkPeriod) {
+                  watch_.Reset();
+                  n = RobustWR(fd_, tx_ser.data, tx_ser.size, 50);
                   if (n == 0) {
                         // Timeout
+                  } else {
+                        
+                        printf("Tx Encoded Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+                               tx_ser.data[0], tx_ser.data[1], tx_ser.data[2], tx_ser.data[3], tx_ser.data[4],
+                               tx_ser.data[5], tx_ser.data[6], tx_ser.data[7], tx_ser.data[8], tx_ser.data[9]);
                   }
-
-                  watch_.Reset();
             }
-            
 
-            //poll
-
-            n = RobustRD(fd_, buffer, 10, 50);
-            if (n == 0) {
-                  // Timeout
-            } else {
-                  printf("We have received something (%d characters)!\n", n);
+            pthread_mutex_lock(&lock_);
+            if (tx_command_valid_) {
+                  Encoder(tx_command_, &tx_ser);
+                  n = RobustWR(fd_, tx_ser.data, tx_ser.size, 50);
+                  if (n != tx_ser.size) {
+                        // Tx Failed! What now?
+                  }
+                  tx_command_valid_ = false;
             }
+            pthread_mutex_unlock(&lock_);
+
+
+
+
             
+            
+            
+            if (rx_command_valid_ == false) {
+                  // New Frame Detector
+                  n = RobustRD(fd_, tmp, sizeof(tmp), 50);
+                  if (n > 0) {
+
+                        //printf("We have received something (%d characters)!\n", n);
+                        for (i = 0; i < n; i++) {
+                              if ((tmp[i] & 0x80) == 0x80) {
+                                    c = 0;
+                              }
+                        
+                              rx_ser.data[c] = tmp[i];
+                              c++;
+                              rx_ser.size = c;                        
+                        
+                              if (c == 10) {
+                                    if ((rx_ser.data[0] & 0x80) == 0x80) {
+
+                                          printf("Rx Encoded Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+                                                 rx_ser.data[0], rx_ser.data[1], rx_ser.data[2], rx_ser.data[3], rx_ser.data[4],
+                                                 rx_ser.data[5], rx_ser.data[6], rx_ser.data[7], rx_ser.data[8], rx_ser.data[9]);
+                                    
+                                          Decoder(&rx_cmd, rx_ser);
+
+                                          if (rx_cmd.type == kInterrupt) {
+                                                if (func_ != nullptr) {
+                                                      func_(rx_cmd.address & 0x0000FFFF, rx_cmd.data32);
+                                                }
+                                          } else {
+
+                                                pthread_mutex_lock(&lock_);
+                                                rx_command_ = rx_cmd;
+                                                rx_command_valid_ = true;
+                                                pthread_mutex_unlock(&lock_);
+
+                                                printf("VALID! :)\n");
+                                          }
+                                    
+                                    }
+                                    c = 0;
+                              }
+                        }
+                  
+                  }
+            }
+
+
             
       }
 

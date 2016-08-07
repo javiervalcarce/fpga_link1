@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <stdint.h>
 
 
 #include <cstdio>
@@ -53,9 +52,27 @@ int Test1() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int Test2() {
+      FpgaLink1::Error e;
+            
+      com = new FpgaLink1(kSerialPort);
+      e = com->Init();
+      
+      if (e != FpgaLink1::kErrorNo) {
+            printf("Error initializing comunication driver (%d)\n", static_cast<int>(e));
+            return 1;
+      }
+
+      while (1) {
+            usleep(10000);
+      }
+      
+      return 0;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
 
-      Test1();
+      Test2();
       return 1;
       
       bool read;
