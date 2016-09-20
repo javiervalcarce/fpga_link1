@@ -1,0 +1,24 @@
+
+Last updated: 2016-09-20
+
+FRAMING TECHNIQUE / PROTOCOL.
+
+Each frame is composed of 9 bytes:
+
+  bit
+  69              64 63               40 39                              8 7                            0
+  +------------------------------------------------------------------------------------------------------+
+  | OPCODE (6 bits) | ADDRESS (24 bits) | DATA (32 bits)                  | CRC (8 bits)                 |
+  +------------------------------------------------------------------------------------------------------+
+
+and that frame is encoded with 10 bytes, thus, there is a fixed
+redundancy of 1 byte per frame. If transmited over a serial port with
+1 start bit and 1 stop bit then en eficiency w.r.t the line speed if E
+= 7/10 = 70%.
+
+
+
+
+
+
+
