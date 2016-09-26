@@ -42,7 +42,7 @@ FpgaLink1::Error FpgaLink1::Init() {
 
       // http://stackoverflow.com/questions/26498582/opening-a-serial-port-on-os-x-hangs-forever-without-o-nonblock-flag
       
-      fd_ = open(device_.c_str(), O_RDWR);
+      fd_ = open(device_.c_str(), O_RDWR | O_NOCTTY);
       if (fd_ == -1) {
             return kErrorNoSuchDevice;
       }
@@ -229,17 +229,14 @@ void* FpgaLink1::ThreadFn() {
       int i;
       int c;
       
-      Command tx_cmd;
+
       Command rx_cmd;
-      SerializedCommand tx_ser;
+      Command tx_cmd;      
       SerializedCommand rx_ser;
+      SerializedCommand tx_ser;
       
-      tx_cmd.type = kIdle;
-      tx_cmd.address = 0x00FFFFFF;  // 24-bit address space
-      tx_cmd.data32 = 0xAABBCCDD;
-
-      Encoder(tx_cmd, &tx_ser);
-
+      uint32_t idle_frame_count = 0;
+      
       watch_.Reset();
       watch_.Start();
 
@@ -253,83 +250,108 @@ void* FpgaLink1::ThreadFn() {
             // Transmission of kIdle commands every kIdleLinkPeriod just to notify that the serial link is not broken
             if (watch_.ElapsedMilliseconds() > kIdleLinkPeriod) {
                   watch_.Reset();
+
+
+                  tx_cmd.type = kIdle;
+                  tx_cmd.address = 0x00ABCDEF;        // 24-bit address
+                  tx_cmd.data32  = idle_frame_count;  // 32-bit data, this field is incremented each time we send a kIdle frame
+                  idle_frame_count++;
+      
+                  Encoder(tx_cmd, &tx_ser);
                   n = RobustWR(fd_, tx_ser.data, tx_ser.size, 50);
                   if (n == 0) {
-                        // Timeout
+                        // Tx Timeout
+                  } else if (n != tx_ser.size) {
+                        // Tx Failed
+
                   } else {
-                        
-                        printf("Tx Encoded Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+                        printf("Tx IDLE Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
                                tx_ser.data[0], tx_ser.data[1], tx_ser.data[2], tx_ser.data[3], tx_ser.data[4],
                                tx_ser.data[5], tx_ser.data[6], tx_ser.data[7], tx_ser.data[8], tx_ser.data[9]);
                   }
             }
 
+
+            // TX SEGMENT ----------------------------------------------------------------------------------------------
             pthread_mutex_lock(&lock_);
             if (tx_command_valid_) {
-                  Encoder(tx_command_, &tx_ser);
+
+                  tx_cmd = tx_command_;
+                  
+                  Encoder(tx_cmd, &tx_ser);
                   n = RobustWR(fd_, tx_ser.data, tx_ser.size, 50);
-                  if (n != tx_ser.size) {
-                        // Tx Failed! What now?
+                  if (n == 0) {
+                        // Tx Timeout
+                  } else if (n != tx_ser.size) {
+                        // Tx Failed
+                  } else {
+                        tx_command_valid_ = false;
+                        printf("Tx Encoded Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+                               tx_ser.data[0], tx_ser.data[1], tx_ser.data[2], tx_ser.data[3], tx_ser.data[4],
+                               tx_ser.data[5], tx_ser.data[6], tx_ser.data[7], tx_ser.data[8], tx_ser.data[9]);
                   }
-                  tx_command_valid_ = false;
             }
             pthread_mutex_unlock(&lock_);
-
-
+            // TX SEGMENT ----------------------------------------------------------------------------------------------
 
 
             
             
-            
-            if (rx_command_valid_ == false) {
-                  // New Frame Detector
-                  n = RobustRD(fd_, tmp, sizeof(tmp), 50);
-                  if (n > 0) {
-
-                        //printf("We have received something (%d characters)!\n", n);
-                        for (i = 0; i < n; i++) {
-                              if ((tmp[i] & 0x80) == 0x80) {
-                                    c = 0;
-                              }
-                        
-                              rx_ser.data[c] = tmp[i];
-                              c++;
-                              rx_ser.size = c;                        
-                        
-                              if (c == 10) {
-                                    if ((rx_ser.data[0] & 0x80) == 0x80) {
-
-                                          printf("Rx Encoded Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
-                                                 rx_ser.data[0], rx_ser.data[1], rx_ser.data[2], rx_ser.data[3], rx_ser.data[4],
-                                                 rx_ser.data[5], rx_ser.data[6], rx_ser.data[7], rx_ser.data[8], rx_ser.data[9]);
-                                    
-                                          Decoder(&rx_cmd, rx_ser);
-
-                                          if (rx_cmd.type == kInterrupt) {
-                                                if (func_ != nullptr) {
-                                                      func_(rx_cmd.address & 0x0000FFFF, rx_cmd.data32);
-                                                }
-                                          } else {
-
-                                                pthread_mutex_lock(&lock_);
-                                                rx_command_ = rx_cmd;
-                                                rx_command_valid_ = true;
-                                                pthread_mutex_unlock(&lock_);
-
-                                                printf("VALID! :)\n");
-                                          }
-                                    
-                                    }
-                                    c = 0;
-                              }
-                        }
-                  
-                  }
+            // If the rx buffer is not empty then... nothing to do here
+            if (rx_command_valid_) {
+                  continue;
             }
 
 
+            // RX SEGMENT ----------------------------------------------------------------------------------------------
+            n = RobustRD(fd_, tmp, sizeof(tmp), 50);
+            if (n > 0) {
+
+                  //printf("I have received %d characters\n", n);
+                  // New Frame Detector Algorithm
+                  for (i = 0; i < n; i++) {
+                        if ((tmp[i] & 0x80) == 0x80) {
+                              c = 0;
+                        }
+                        
+                        rx_ser.data[c] = tmp[i];
+                        c++;
+                        rx_ser.size = c;                        
+                        
+                        if (c == 10) {
+                              if ((rx_ser.data[0] & 0x80) == 0x80) {
+
+                                    printf("Rx Encoded Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+                                           rx_ser.data[0], rx_ser.data[1], rx_ser.data[2], rx_ser.data[3], rx_ser.data[4],
+                                           rx_ser.data[5], rx_ser.data[6], rx_ser.data[7], rx_ser.data[8], rx_ser.data[9]);
+                                    
+                                    Decoder(&rx_cmd, rx_ser);
+
+                                    if (rx_cmd.type == kInterrupt) {
+                                          if (func_ != nullptr) {
+                                                func_(rx_cmd.address & 0x0000FFFF, rx_cmd.data32);
+                                          }
+                                    } else {
+
+                                          pthread_mutex_lock(&lock_);
+                                          rx_command_ = rx_cmd;
+                                          rx_command_valid_ = true;
+                                          pthread_mutex_unlock(&lock_);
+
+                                          printf("VALID! :)\n");
+                                    }
+                                    
+                              }
+                              c = 0;
+                        }
+                  }
+                  
+            }
+            // RX SEGMENT ----------------------------------------------------------------------------------------------
+
+
             
-      }
+      }  // while (1)
 
       return NULL;
 }

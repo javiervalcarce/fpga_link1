@@ -25,7 +25,8 @@ using fpga_link1::FpgaLink1;
 // Bus I2C y 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1* com = NULL;
-//const std::string kSerialPort("/dev/tty.usbserial-FTE5IS5D");  // With Flow Control
+
+const std::string kSerialPort("/dev/ttyS0");  // With Flow Control
 const std::string kSerialPort("/dev/cu.usbserial-FTE5IS5D");   // Without Flow Control
 
 
