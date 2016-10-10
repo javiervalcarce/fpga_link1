@@ -21,6 +21,21 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
       
       switch (cmd.type) {          
       case kWrite8:
+<<<<<<< HEAD
+=======
+            tmp[0] = cmd.type;
+            tmp[1] = (cmd.address & 0x00ff0000) >> 16;
+            tmp[2] = (cmd.address & 0x0000ff00) >> 8;
+            tmp[3] = (cmd.address & 0x000000ff) >> 0;
+            tmp[4] = 0x00;
+            tmp[5] = 0x00;
+            tmp[6] = 0x00;
+            tmp[7] = cmd.data8;
+            tmp[8] = cmd.crc; // CRC
+            break;
+            
+      case kIdle:
+>>>>>>> 1e1daed83e7e67bf869e54628557bcec72f923bd
       case kWrite32:
             tmp[0] = cmd.type;
             tmp[1] = (cmd.address & 0x00ff0000) >> 16;
@@ -33,6 +48,7 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
             tmp[8] = cmd.crc; // CRC
             break;
 
+<<<<<<< HEAD
       case kIdle:
             tmp[0] = cmd.type;
             tmp[1] = 0xa5;
@@ -45,14 +61,15 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
             tmp[8] = cmd.crc; // CRC
             break;
             
+=======
+>>>>>>> 1e1daed83e7e67bf869e54628557bcec72f923bd
       default:
             assert(false);
       }
   
       serialized->size = 10;
       
-      // First transmitted byte over serial link is serialized->data[0]
-      
+      // First transmitted byte over serial link is serialized->data[0]      
       serialized->data[9] = ((tmp[8] & 0b01111111) << 0) | ((tmp[0] & 0b00000000) >> 0);  // 7+0
       serialized->data[8] = ((tmp[7] & 0b00111111) << 1) | ((tmp[8] & 0b10000000) >> 7);  // 6+1
       serialized->data[7] = ((tmp[6] & 0b00011111) << 2) | ((tmp[7] & 0b11000000) >> 6);  // 5+2

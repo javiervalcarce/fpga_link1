@@ -32,21 +32,25 @@ enum CommandType {
 
 struct Command {
 
-      // Type of command for the microelectronic system.
+      // Type of command for the microelectronic system (8 bits field).
       CommandType type;
 
-      // 24-bit address, valid rage is 0x00000000 to 0x00FFFFFF.
+      // 24-bit address, valid rage is 0x00000000 to 0x00FFFFFF (24 bits field).
       uint32_t address;
 
-      // Data to write to or read from a microelectronic system register.
+      // Data to write to or read from a microelectronic system register (32 bits field).
       union {
             uint8_t data8;
             uint16_t data16;
             uint32_t data32;
       };
 
+<<<<<<< HEAD
       // CRC
       uint8_t crc;      
+=======
+      uint8_t crc;
+>>>>>>> 1e1daed83e7e67bf869e54628557bcec72f923bd
 };
 
 
