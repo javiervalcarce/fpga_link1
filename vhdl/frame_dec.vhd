@@ -29,7 +29,13 @@ use IEEE.STD_LOGIC_ARITH.all;
 use IEEE.STD_LOGIC_UNSIGNED.all;
 
 ------------------------------------------------------------------------------------------------------------------------
-
+--
+-- This block has an interface compatible with Avalon-ST.
+--
+-- This block process an input stream of encoded bytes, detects frame limits and outputs the decoded frame.
+-- Inputs 10 encoded bytes and output a frame of 9 bytes.
+--
+--
 entity frame_dec is
       generic (
             N : integer := 10);
@@ -39,10 +45,12 @@ entity frame_dec is
             data        : in  std_logic_vector(7 downto 0);
             data_valid  : in  std_logic;
             data_ready  : out std_logic;
-            frame       : out std_logic_vector(69 downto 0);
+            frame       : out std_logic_vector(69 downto 0); -- 10 * 8 = 
             frame_valid : out std_logic;
             frame_ready : in  std_logic);
 end frame_dec;
+
+
 
 ------------------------------------------------------------------------------------------------------------------------
 architecture rtl of frame_dec is
@@ -56,7 +64,7 @@ architecture rtl of frame_dec is
       subtype PACK6 is natural range 27 downto 21;
       subtype PACK7 is natural range 20 downto 14;
       subtype PACK8 is natural range 13 downto 7;
-      subtype PACK9 is natural range 6 downto 0;
+      subtype PACK9 is natural range 6  downto 0;
 
       signal frame_int        : std_logic_vector(69 downto 0);
       signal frame_valid_int  : std_logic;

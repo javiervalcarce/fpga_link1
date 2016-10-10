@@ -45,7 +45,8 @@ struct Command {
             uint32_t data32;
       };
 
-            
+      // CRC
+      uint8_t crc;      
 };
 
 

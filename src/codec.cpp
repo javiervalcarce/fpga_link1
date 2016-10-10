@@ -5,11 +5,15 @@
 #include <cstdio>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /*
+  Frames are of 70 bits encoded with 9 bytes so the two MSB are not valid (9 bytes * 8 bits/byte - 2 bits = 70 bits).
+
   bit 69              64 63               40 39                              8 7                            0
   +------------------------------------------------------------------------------------------------------+
   | OPCODE (6 bits) | ADDRESS (24 bits) | DATA (32 bits)                  | CRC (8 bits)                 |
   +------------------------------------------------------------------------------------------------------+
+
 */
 int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
 
@@ -17,17 +21,6 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
       
       switch (cmd.type) {          
       case kWrite8:
-            tmp[0] = cmd.type;
-            tmp[1] = (cmd.address & 0x00ff0000) >> 16;
-            tmp[2] = (cmd.address & 0x0000ff00) >> 8;
-            tmp[3] = (cmd.address & 0x000000ff) >> 0;
-            tmp[4] = cmd.data8;
-            tmp[5] = 0x00;
-            tmp[6] = 0x00;
-            tmp[7] = 0x00;
-            tmp[8] = 0xFF; // CRC
-            break;
-          
       case kWrite32:
             tmp[0] = cmd.type;
             tmp[1] = (cmd.address & 0x00ff0000) >> 16;
@@ -37,7 +30,7 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
             tmp[5] = (cmd.data32 & 0x00ff0000) >> 16;
             tmp[6] = (cmd.data32 & 0x0000ff00) >> 8;
             tmp[7] = (cmd.data32 & 0x000000ff) >> 0;
-            tmp[8] = 0xFF; // CRC
+            tmp[8] = cmd.crc; // CRC
             break;
 
       case kIdle:
@@ -49,7 +42,7 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
             tmp[5] = 0xa5;
             tmp[6] = 0xa5;
             tmp[7] = 0xa5;
-            tmp[8] = 0xFF; // CRC
+            tmp[8] = cmd.crc; // CRC
             break;
             
       default:

@@ -44,6 +44,18 @@ end frame_enc;
 
 ------------------------------------------------------------------------------------------------------------------------
 architecture rtl of frame_enc is
+
+      subtype PACK0 is natural range 69 downto 63;
+      subtype PACK1 is natural range 62 downto 56;
+      subtype PACK2 is natural range 55 downto 49;
+      subtype PACK3 is natural range 48 downto 42;
+      subtype PACK4 is natural range 41 downto 35;
+      subtype PACK5 is natural range 34 downto 28;
+      subtype PACK6 is natural range 27 downto 21;
+      subtype PACK7 is natural range 20 downto 14;
+      subtype PACK8 is natural range 13 downto 07;
+      subtype PACK9 is natural range 06 downto 00;
+
       
       signal frame_reg : std_logic_vector(69 downto 0);
 
@@ -72,18 +84,19 @@ begin
 
 
       -- Multiplexer (combinational circuit)
-      p_mux : process(all)
+      p_mux : process(frame_reg, sel)
       begin
             case sel is
-                  when 0 => data <= frame_reg(PACK0);
-                  when 1 => data <= frame_reg(PACK1);
-                  when 2 => data <= frame_reg(PACK2);
-                  when 3 => data <= frame_reg(PACK3);
-                  when 4 => data <= frame_reg(PACK4);
-                  when 5 => data <= frame_reg(PACK5);
-                  when 6 => data <= frame_reg(PACK6);
-                  when 7 => data <= frame_reg(PACK7);
-                  when 8 => data <= frame_reg(PACK8);
+                  when 0 => data <= "0" & frame_reg(PACK0);
+                  when 1 => data <= "0" & frame_reg(PACK1);
+                  when 2 => data <= "0" & frame_reg(PACK2);
+                  when 3 => data <= "0" & frame_reg(PACK3);
+                  when 4 => data <= "0" & frame_reg(PACK4);
+                  when 5 => data <= "0" & frame_reg(PACK5);
+                  when 6 => data <= "0" & frame_reg(PACK6);
+                  when 7 => data <= "0" & frame_reg(PACK7);
+                  when 8 => data <= "0" & frame_reg(PACK8);
+                  when 9 => data <= "1" & frame_reg(PACK9); 
             end case;
             
       end process;
@@ -94,7 +107,7 @@ begin
       -------------------------------------------------------------------------------
       CTL : block
 
-            type state_type is (IDLE, INPUT, B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, CRC);
+            type state_type is (IDLE, B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, CRC);
 
             signal state : state_type;
             signal op    : std_logic_vector(2 downto 0);
@@ -103,7 +116,7 @@ begin
             -- 2 procesos para separar la parte secuencial de la combinacional, de
             -- esta forma las salidas no son registros ("registered outputs") y por
             -- tanto no hay un ciclo de reloj de espera
-            process (reset, clk)
+            process (reset_n, clk)
             begin
                   if reset_n = '0' then
                         state <= idle;
@@ -112,21 +125,19 @@ begin
                         case (state) is
                               when IDLE =>
                                     if frame_valid = '1' then
-                                          state <= INPUT;
+                                          state <= B0;
                                     end if;
-                              when INPUT =>
-                                    state <= B0;
-                              when B0  => if data_ready_int = '1' then state <= B1; end if;
-                              when B1  => if data_ready_int = '1' then state <= B1; end if;  
-                              when B2  => if data_ready_int = '1' then state <= B1; end if;  
-                              when B3  => if data_ready_int = '1' then state <= B1; end if;                                      
-                              when B4  => if data_ready_int = '1' then state <= B1; end if;  
-                              when B5  => if data_ready_int = '1' then state <= B1; end if;  
-                              when B6  => if data_ready_int = '1' then state <= B1; end if;                                      
-                              when B7  => if data_ready_int = '1' then state <= B1; end if;  
-                              when B8  => if data_ready_int = '1' then state <= B1; end if;  
-                              when B9  => if data_ready_int = '1' then state <= B1; end if;
-                              when CRC => if data_ready_int = '1' then state <= B1; end if;
+                              when B0  => if data_ready = '1' then state <= B1; end if;
+                              when B1  => if data_ready = '1' then state <= B1; end if;  
+                              when B2  => if data_ready = '1' then state <= B1; end if;  
+                              when B3  => if data_ready = '1' then state <= B1; end if;                                      
+                              when B4  => if data_ready = '1' then state <= B1; end if;  
+                              when B5  => if data_ready = '1' then state <= B1; end if;  
+                              when B6  => if data_ready = '1' then state <= B1; end if;                                      
+                              when B7  => if data_ready = '1' then state <= B1; end if;  
+                              when B8  => if data_ready = '1' then state <= B1; end if;  
+                              when B9  => if data_ready = '1' then state <= B1; end if;
+                              when CRC => if data_ready = '1' then state <= B1; end if;
                         end case;
                   end if;
             end process;
@@ -143,9 +154,7 @@ begin
                   -- La función TRIM elimina los espacios de la cadena y devuelve un tipo
                   -- std_logic_vector con los elementos restantes (definida en work.conf)
                   case state is
-                                        --SH ST NEW
                         when IDLE  =>
-                        when INPUT => wr <= '1'; frame_ready_int <= '1';
                         when B0    => sel <= 0; data_valid_int <= '1';
                         when B1    => sel <= 1; data_valid_int <= '1';
                         when B2    => sel <= 2; data_valid_int <= '1';
@@ -156,12 +165,7 @@ begin
                         when B7    => sel <= 7; data_valid_int <= '1';
                         when B8    => sel <= 8; data_valid_int <= '1';
                         when B9    => sel <= 9; data_valid_int <= '1';
-
-                                      
                         when CRC   => sel <= 0;                             
-                              
-                        when notify => op <= STRTRIM("0 0 1");
-                                       
                   end case;
             end process;
       end block CTL;
