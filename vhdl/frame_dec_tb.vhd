@@ -5,7 +5,7 @@
 --
 -- 
 --
--- Copyright (c) 2016 Javier Valcarce García, <javier.valcarce@gmail.com>
+-- Copyright (c) 2016 Javier Valcarce Garcia, <javier.valcarce@gmail.com>
 -- http://javiervalcarce.eu
 --
 ------------------------------------------------------------------------------------------------------------------------
@@ -52,24 +52,10 @@ architecture sim of frame_dec_tb is
       
       --attribute INIT : string; 
       --attribute INIT of mux1_lut      : label is "E4FF";
-
-      component frame_dec is
-            generic (
-                  N : integer := 10);
-            port (
-                  reset_n             : in    std_logic;
-                  clk                 : in    std_logic;
-                  data                : in    std_logic_vector(7  downto 0);
-                  data_valid          : in    std_logic;
-                  data_ready          : out   std_logic;
-                  frame               : out   std_logic_vector(69 downto 0);
-                  frame_valid         : out   std_logic;       
-                  frame_ready         : in    std_logic);
-
-      end component;
       
 begin
 
+      
       -- system clock (@50MHz)
       p_system_clk : process
       begin
@@ -87,42 +73,76 @@ begin
                  '1' after 4.0 * SYSTEM_TCLK;
 
       p_input: process
+
+            --constant kInputFrame : std_logic_vector(69 downto 00);
+            
       begin
 
+            -- simulo la entrada, byte a byte, de la siguiente trama codificada:
+
+            -- opcode (6 bits) address (24 bits)    data (32 bits)  crc (8 bits)
+            -- --------------- -------------------- --------------- ------------
+            -- 0e              aa bb cc             01 02 03 04     00
+            -- -----------------------------------------------------------------
+            
+            -- Coded:
+            -- 9d 2a 5d 73 0a 56 33 5e 10 00
+            
             data_valid <= '0';
             data <= X"00";
-            frame_ready <= '1';
+            frame_ready <= '0';
             
             wait until rising_edge(reset_n);
-            
+
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
+
+            wait until rising_edge(clk);
             data_valid <= '1';
-            data <= X"C0";
-            wait until rising_edge(clk);
 
-            data <= X"0A";
-            wait until rising_edge(clk);
+            
 
-            data <= X"05";
+            data <= X"9d";
             wait until rising_edge(clk);
-
-            data <= X"43";
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
+            
+            data <= X"2a";
             wait until rising_edge(clk);
-
-            data <= X"00";
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
+            
+            data <= X"5d";
             wait until rising_edge(clk);
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
 
-            data <= X"1F";
+            
+            data <= X"73";
             wait until rising_edge(clk);
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
 
-            data <= X"78";
+            
+            data <= X"0a";
             wait until rising_edge(clk);
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
 
-            data <= X"0C";
+            
+            data <= X"56";
             wait until rising_edge(clk);
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
 
-            data <= X"08";
+            
+            data <= X"33";
             wait until rising_edge(clk);
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
 
+            
+            data <= X"5e";
+            wait until rising_edge(clk);
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
+            
+            data <= X"10";
+            wait until rising_edge(clk);
+            assert (frame_valid = '0') report "frame_valid <> 0" severity error;
+
+            
             data <= X"00";
             wait until rising_edge(clk);
 
@@ -130,7 +150,22 @@ begin
             
             -- give some time more to process the last byte
             wait until rising_edge(clk);
+
+            
             wait until rising_edge(clk);
+            wait until rising_edge(clk);
+            wait until rising_edge(clk);
+            wait until rising_edge(clk);
+            wait until rising_edge(clk);
+
+            
+
+            assert (frame_valid = '1') report "frame_valid <> 1" severity error;
+
+            frame_ready <= '1';
+            wait until rising_edge(clk);
+            
+            frame_ready <= '0';
             wait until rising_edge(clk);
             wait until rising_edge(clk);
             wait until rising_edge(clk);
@@ -140,7 +175,8 @@ begin
       end process;
       
 
-      uut: frame_dec port map (
+      -- entity instantiation (VHDL'93)
+      uut: entity work.frame_dec port map (
             reset_n     => reset_n,
             clk         => clk,
             data        => data,

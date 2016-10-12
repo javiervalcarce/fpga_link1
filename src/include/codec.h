@@ -45,12 +45,9 @@ struct Command {
             uint32_t data32;
       };
 
-<<<<<<< HEAD
+
       // CRC
       uint8_t crc;      
-=======
-      uint8_t crc;
->>>>>>> 1e1daed83e7e67bf869e54628557bcec72f923bd
 };
 
 

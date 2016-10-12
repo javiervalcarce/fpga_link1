@@ -13,8 +13,9 @@ using fpga_link1::FpgaLink1;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1::FpgaLink1(std::string device) {
+FpgaLink1::FpgaLink1(std::string device, int speed_bps) {
       device_ = device;
+      speed_ = speed_bps;
       fd_ = -1;
       thread_name_ = "fpga_link1";
       thread_exit_ = false;
@@ -60,8 +61,8 @@ FpgaLink1::Error FpgaLink1::Init() {
       tio.c_cc[VMIN] = 1;
       tio.c_cc[VTIME] = 1;
       
-      cfsetispeed(&tio, B38400); //B115200);
-      cfsetospeed(&tio, B38400); //B115200);
+      cfsetispeed(&tio, speed_); //B38400); //B115200);
+      cfsetospeed(&tio, speed_); //B38400); //B115200);
       
       r = tcsetattr(fd_, TCSANOW, &tio);
       if (r != 0) {
@@ -252,10 +253,9 @@ void* FpgaLink1::ThreadFn() {
                   watch_.Reset();
 
 
-                  tx_cmd.type = kIdle;
-                  tx_cmd.address = 0x00ABCDEF;        // 24-bit address
-                  tx_cmd.data32  = idle_frame_count;  // 32-bit data, this field is incremented each time we send a kIdle frame
-                  idle_frame_count++;
+                  tx_cmd.type    = kIdle;
+                  tx_cmd.address = 0x00AABBCC;        // 24-bit address
+                  tx_cmd.data32  = 0x55667788;        //idle_frame_count;  // 32-bit data, this field is incremented each time we send a kIdle frame
       
                   Encoder(tx_cmd, &tx_ser);
                   n = RobustWR(fd_, tx_ser.data, tx_ser.size, 50);
@@ -263,12 +263,15 @@ void* FpgaLink1::ThreadFn() {
                         // Tx Timeout
                   } else if (n != tx_ser.size) {
                         // Tx Failed
-
                   } else {
+                        
                         printf("Tx IDLE Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
                                tx_ser.data[0], tx_ser.data[1], tx_ser.data[2], tx_ser.data[3], tx_ser.data[4],
                                tx_ser.data[5], tx_ser.data[6], tx_ser.data[7], tx_ser.data[8], tx_ser.data[9]);
                   }
+                  
+                  idle_frame_count++;
+                                    
             }
 
 

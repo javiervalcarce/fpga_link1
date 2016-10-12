@@ -65,11 +65,13 @@ namespace fpga_link1 {
 
             /**
              * Ctor.
-             * @param thread_name The name of service thread, this name will show in a GDB session typing "info
-             * threads" command.
+             *
+             * @param device The serial port device file, it will be setup <SPEED>-8N1
+             * @param Serial port speed in bits per second, use standard values like 115200, 38400, 9600, etc.
              */
-            FpgaLink1(std::string device);
+            FpgaLink1(std::string device, int speed_bps);
 
+            
             /**
              * Dtor.
              */
@@ -112,6 +114,7 @@ namespace fpga_link1 {
 
             Stopwatch watch_;
             std::string device_;
+            int speed_;
             int fd_;
 
             InterruptCallback func_;

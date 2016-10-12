@@ -42,10 +42,10 @@ entity frame_dec is
       port (
             reset_n     : in  std_logic;
             clk         : in  std_logic;
-            data        : in  std_logic_vector(7 downto 0);
+            data        : in  std_logic_vector(07 downto 00);
             data_valid  : in  std_logic;
             data_ready  : out std_logic;
-            frame       : out std_logic_vector(69 downto 0); -- 10 * 8 = 
+            frame       : out std_logic_vector(69 downto 00);  -- 10 bytes * 7 bits/byte=70 bits 
             frame_valid : out std_logic;
             frame_ready : in  std_logic);
 end frame_dec;
@@ -63,78 +63,83 @@ architecture rtl of frame_dec is
       subtype PACK5 is natural range 34 downto 28;
       subtype PACK6 is natural range 27 downto 21;
       subtype PACK7 is natural range 20 downto 14;
-      subtype PACK8 is natural range 13 downto 7;
-      subtype PACK9 is natural range 6  downto 0;
+      subtype PACK8 is natural range 13 downto 07;
+      subtype PACK9 is natural range 06 downto 00;
 
-      signal frame_int        : std_logic_vector(69 downto 0);
-      signal frame_valid_int  : std_logic;
-      signal c                : integer range 0 to 9;
+      signal frame_int       : std_logic_vector(69 downto 00);  -- 70 bits
+      signal frame_valid_int : std_logic;
+      signal c               : integer range 0 to 9;
 
 
 begin
-      frame <= frame_int;
+      frame       <= frame_int;
       frame_valid <= frame_valid_int;
 
-      data_ready <= '1'; -- tmp
-      
-      p_position : process(reset_n, clk)
+      data_ready <= '1';                -- tmp
+
+
+      -- p_lat : process(reset_n, clk)
+      -- begin
+      -- end process;
+
+
+      p_asm : process(reset_n, clk)
       begin
             if reset_n = '0' then
-                  c <= 0;
-                  frame_int <= (others => '0');  -- not strictly required
+                  c               <= 0;
                   frame_valid_int <= '0';
-                  
+                  frame_int       <= (others => '0');  -- not strictly required TODO: Remove
+
             elsif rising_edge(clk) then
-                  
-                  if frame_valid_int = '0' and data_valid = '1' then
-                        
-                        frame_valid_int <= '0';
-                        
-                        if data(7) = '1' then
-                              -- It is the first byte
-                              c                <= 1;
-                              frame_int(PACK0) <= data(6 downto 0);
-                        else
-                              
-                              if c = 1 then
-                                    frame_int(PACK1) <= data(6 downto 0);
-                                    c                <= 2;
-                              elsif c = 2 then
-                                    frame_int(PACK2) <= data(6 downto 0);
-                                    c                <= 3;
-                              elsif c = 3 then
-                                    frame_int(PACK3) <= data(6 downto 0);
-                                    c                <= 4;
-                              elsif c = 4 then
-                                    frame_int(PACK4) <= data(6 downto 0);
-                                    c                <= 5;
-                              elsif c = 5 then
-                                    frame_int(PACK5) <= data(6 downto 0);
-                                    c                <= 6;
-                              elsif c = 6 then
-                                    frame_int(PACK6) <= data(6 downto 0);
-                                    c                <= 7;
-                              elsif c = 7 then
-                                    frame_int(PACK7) <= data(6 downto 0);
-                                    c                <= 8;
-                              elsif c = 8 then
-                                    frame_int(PACK8) <= data(6 downto 0);
-                                    c                <= 9;
-                              elsif c = 9 then
-                                    frame_int(PACK9) <= data(6 downto 0);
-                                    c                <= 0;     
-                                    -- there is no next state
-                                    frame_valid_int  <= '1';
-                              end if;
 
-
+                  if frame_valid_int = '1' then
+                        -- A decoded and CRC-validated frame is ready to be delivered
+                        if frame_ready = '1' then
+                              c               <= 0;
+                              frame_valid_int <= '0';
                         end if;
-
+                  else
+                        -- If there is no input data to process then go
+                        -- directly to the end of this process.
+                        if data_valid = '1' then
+                              if data(7) = '1' then
+                                    -- It marked as the first byte of the frame (MSB is '1')
+                                    c                <= 1;
+                                    frame_int(PACK0) <= data(6 downto 0);
+                              else
+                                    if c = 1 then
+                                          frame_int(PACK1) <= data(6 downto 0);
+                                          c                <= 2;
+                                    elsif c = 2 then
+                                          frame_int(PACK2) <= data(6 downto 0);
+                                          c                <= 3;
+                                    elsif c = 3 then
+                                          frame_int(PACK3) <= data(6 downto 0);
+                                          c                <= 4;
+                                    elsif c = 4 then
+                                          frame_int(PACK4) <= data(6 downto 0);
+                                          c                <= 5;
+                                    elsif c = 5 then
+                                          frame_int(PACK5) <= data(6 downto 0);
+                                          c                <= 6;
+                                    elsif c = 6 then
+                                          frame_int(PACK6) <= data(6 downto 0);
+                                          c                <= 7;
+                                    elsif c = 7 then
+                                          frame_int(PACK7) <= data(6 downto 0);
+                                          c                <= 8;
+                                    elsif c = 8 then
+                                          frame_int(PACK8) <= data(6 downto 0);
+                                          c                <= 9;
+                                    elsif c = 9 then
+                                          frame_int(PACK9) <= data(6 downto 0);
+                                          c                <= 0;
+                                          frame_valid_int  <= '1';
+                                    end if;
+                              end if;
+                        end if;
                   end if;
-
             end if;
-
       end process;
-
 
 end rtl;

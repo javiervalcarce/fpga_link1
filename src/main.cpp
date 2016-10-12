@@ -1,6 +1,6 @@
 // Hi Emacs, this is -*- mode: c++; tab-width: 6; indent-tabs-mode: nil; c-basic-offset: 6 -*-
 /**
- * Programa de manipulación de bits y registros de una FPGA con el diseño FPGALINK1.
+ * Programa de manipulaci�n de bits y registros de una FPGA con el diseño FPGALINK1.
  * Ver el directorio vhdl/
  *
  *
@@ -26,7 +26,13 @@ using fpga_link1::FpgaLink1;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1* com = NULL;
 
-const std::string kSerialPort("/dev/ttyS0");  // With Flow Control
+
+std::string param_port;
+int param_speed;
+
+
+
+//const std::string kSerialPort("/dev/ttyS0");  // With Flow Control
 const std::string kSerialPort("/dev/cu.usbserial-FTE5IS5D");   // Without Flow Control
 
 
@@ -38,8 +44,7 @@ void ShowUsage();
 int Test1() {
       FpgaLink1::Error e;
       
-      
-      com = new FpgaLink1(kSerialPort);
+      com = new FpgaLink1(param_port, param_speed);
       e = com->Init();
       
       if (e != FpgaLink1::kErrorNo) {
@@ -56,7 +61,7 @@ int Test1() {
 int Test2() {
       FpgaLink1::Error e;
             
-      com = new FpgaLink1(kSerialPort);
+      com = new FpgaLink1(param_port, param_speed);
       e = com->Init();
       
       if (e != FpgaLink1::kErrorNo) {
@@ -73,6 +78,22 @@ int Test2() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
 
+      if (argc < 3) {
+            ShowUsage();
+            return 0;
+      }
+
+      param_port = argv[1];
+
+      char* endp;
+      param_speed = strtoul(argv[2], &endp, 10);
+      if (*endp != '\0') {
+            printf("Error reading serial port speed\n");
+            return 1;
+      }
+
+
+      
       Test2();
       return 1;
       
@@ -88,7 +109,7 @@ int main(int argc, char* argv[]) {
       }
 
 
-      com = new FpgaLink1(kSerialPort);
+      com = new FpgaLink1(param_port, param_speed);
       if (com->Init() != 0) {
             printf("Error initializing comunication driver\n");
             return 1;
