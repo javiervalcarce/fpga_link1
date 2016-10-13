@@ -1,0 +1,47 @@
+# For S3 Board
+#
+
+NET "clk" LOC = "T9" ; 
+NET "reset" LOC = "L14" ;
+
+NET "epp_astb"   LOC = "H3" ;
+NET "epp_dstb"   LOC = "J3" ;
+NET "epp_write" LOC = "J4" ;
+NET "epp_wait"  LOC = "K5" ;
+#
+NET "epp_data<0>"  LOC = "M10"  ;
+NET "epp_data<1>"  LOC = "F3"  ;
+NET "epp_data<2>"  LOC = "G4"  ;
+NET "epp_data<3>"  LOC = "E3"  ;
+NET "epp_data<4>"  LOC = "F4"  ;
+NET "epp_data<5>"  LOC = "G5"  ;
+NET "epp_data<6>"  LOC = "E4"  ;
+NET "epp_data<7>"  LOC = "H4"  ;
+#
+NET "led<0>"  LOC = "K12"  ;
+NET "led<1>"  LOC = "P14"  ;
+NET "led<2>"  LOC = "L12"  ;
+NET "led<3>"  LOC = "N14"  ;
+NET "led<4>"  LOC = "P13"  ;
+NET "led<5>"  LOC = "N12"  ;
+NET "led<6>"  LOC = "P12"  ;
+NET "led<7>"  LOC = "P11"  ;
+
+# 7seg displays
+NET "seg7_do<0>"  LOC = "E14" ;  # A
+NET "seg7_do<1>"  LOC = "G13" ;  # B
+NET "seg7_do<2>"  LOC = "N15" ;  # C
+NET "seg7_do<3>"  LOC = "P15" ;  # D
+NET "seg7_do<4>"  LOC = "R16" ;  # E
+NET "seg7_do<5>"  LOC = "F13" ;  # F
+NET "seg7_do<6>"  LOC = "N16" ;  # G
+NET "seg7_do<7>"  LOC = "P16" ;  # DP
+
+
+# AN enable/disable signals for 7-seg displays, active low
+NET "seg7_an<0>"  LOC = "D14" ; 
+NET "seg7_an<1>"  LOC = "G14" ; 
+NET "seg7_an<2>"  LOC = "F14" ; 
+NET "seg7_an<3>"  LOC = "E13" ; 
+
+NET "ctrsel" LOC = "F12" ;
