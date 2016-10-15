@@ -102,7 +102,7 @@ namespace fpga_link1 {
 
             static const int kWaitForValidSleep = 1000;       // us, 1000 us = 1 ms
             static const int kIdleSleep = 1000;       // us, 1000 us = 1 ms
-            static const int kIdleLinkPeriod = 500;   // ms, 500 ms = 1 s
+            static const int kIdleLinkPeriod = 200;   // ms
             
             bool initialized_;
             pthread_t thread_;

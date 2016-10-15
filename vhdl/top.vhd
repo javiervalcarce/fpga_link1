@@ -38,13 +38,13 @@ use IEEE.STD_LOGIC_UNSIGNED.all;
 --
 entity top is
       port (
-            reset       : in  std_logic;
-            clk         : in  std_logic;
-            serial_tx   : out  std_logic;
-            serial_rx   : in  std_logic;
-            if7segx4_an : out std_logic_vector(3 downto 0);
-            if7segx4_do : out std_logic_vector(7 downto 0);
-            led         : out   std_logic_vector(07 downto 00));       
+            external_reset : in  std_logic;
+            clk            : in  std_logic;
+            serial_tx      : out std_logic;
+            serial_rx      : in  std_logic;
+            if7seg_an      : out std_logic_vector(3 downto 0);
+            if7seg_do      : out std_logic_vector(7 downto 0);
+            led            : out std_logic_vector(7 downto 0));
 end top;
 
 
@@ -60,19 +60,124 @@ architecture rtl of top is
       subtype PACK5 is natural range 34 downto 28;
       subtype PACK6 is natural range 27 downto 21;
       subtype PACK7 is natural range 20 downto 14;
-      subtype PACK8 is natural range 13 downto 7;
-      subtype PACK9 is natural range 6 downto 0;
+      subtype PACK8 is natural range 13 downto 07;
+      subtype PACK9 is natural range 06 downto 00;
 
-      signal frame_int        : std_logic_vector(69 downto 0);
-      signal frame_valid_int  : std_logic;
-      signal c                : integer range 0 to 9;
 
-begin
-      frame <= frame_int;
-      frame_valid <= frame_valid_int;
+      signal en16     : std_logic;
+      signal counter  : unsigned(15 downto 0);
+      signal reset    : std_logic;        
+      signal reset_n  : std_logic;
+      signal clk_slow : std_logic;
 
-      data_ready <= '1'; -- tmp
+      signal read_buffer  : std_logic;
+      signal reset_buffer : std_logic;
       
+      -- Avalon-ST signals for serial port TX
+      signal tx_data  : std_logic_vector(7 downto 0); -- bytes que se envían                                                      -- tx
+      signal tx_valid : std_logic;
+      signal tx_ready : std_logic;
+      signal tx_full  : std_logic;
+      
+      -- Avalon-ST signals for serial port TX
+      signal rx_data  : std_logic_vector(7 downto 0); -- bytes que se reciben
+      signal rx_valid : std_logic;
+      signal rx_ready : std_logic;
+
+      signal frame_dec_data  : std_logic_vector(69 downto 00);
+      signal frame_dec_valid : std_logic;
+      signal frame_dec_ready : std_logic;
+      
+begin
+      -- tmp debug
+      tx_data  <= (others => '0');
+      tx_valid <= '0';
+      frame_dec_ready <= '1'; -- siepre listos para recibir una nueva trama
+      --
+
+      
+      counter  <= counter + 1 when rising_edge(clk);
+      clk_slow <= counter(15);  -- 50 MHz / 2^16 = 763Hz for debouncing flip-flops
+      
+      -- Debouncer circuit for external reset signal
+      reset    <= external_reset when rising_edge(clk_slow);
+      reset_n  <= not reset;
+      tx_ready <= not tx_full;
 
 
+      led <= frame_dec_data(31 downto 24);
+      
+      div : process(clk, reset_n)
+            -- ¿Cuántos periodos de reloj externo |clk| hay en un periodo de
+            -- bit. Pues Fclk / bps. Así pues hay que generar un pulso de en16
+            -- cada Fclk / bps / 16
+            --
+            -- Fclk = 50 MHz, bps = 9600 => Cada 50e6/9600/16 = 326 con un
+            -- error relativo del 0,15 %
+            variable c : integer range 0 to 326;
+      begin
+            if reset_n = '0' then
+                  en16 <= '0';
+            elsif rising_edge(clk) then
+                  c    := c + 1;
+                  en16 <= '0';
+                  if c = 325 then
+                        c    := 0;
+                        en16 <= '1';
+                  end if;
+            end if;
+      end process;
+
+      
+      
+      -- Receptor del puerto serie
+      urx : entity work.uart_rx port map (
+            -- in
+            clk                 => clk,
+            serial_in           => serial_rx,
+            read_buffer         => rx_ready,
+            reset_buffer        => reset_buffer,
+            en_16_x_baud        => en16,
+            -- out
+            data_out            => rx_data,
+            buffer_data_present => rx_valid,
+            buffer_full         => open,
+            buffer_half_full    => open);
+
+      -- Transmisor del puerto serie
+      utx : entity work.uart_tx port map (
+            -- in
+            clk              => clk,
+            data_in          => tx_data,
+            write_buffer     => tx_valid,
+            reset_buffer     => reset_buffer,
+            en_16_x_baud     => en16,
+            -- out
+            serial_out       => serial_tx,
+            buffer_full      => tx_full,
+            buffer_half_full => open);
+
+
+      -- Decodificador de tramas
+      dec : entity work.frame_dec port map (
+            clk         => clk,
+            reset_n     => reset_n,
+				-- in
+            data        => rx_data,
+            data_valid  => rx_valid,
+            data_ready  => rx_ready,
+            -- out
+            frame       => frame_dec_data,
+            frame_valid => frame_dec_valid,
+            frame_ready => frame_dec_ready
+      );
+
+      seg : entity work.interface_7segx4 port map (
+            reset    => reset,
+            clk50MHz => clk,
+            di       => frame_dec_data(23 downto 08),
+            an       => if7seg_an,
+            do       => if7seg_do
+      );
+      
 end rtl;

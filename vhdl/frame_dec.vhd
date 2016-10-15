@@ -75,12 +75,7 @@ begin
       frame       <= frame_int;
       frame_valid <= frame_valid_int;
 
-      data_ready <= '1';                -- tmp
-
-
-      -- p_lat : process(reset_n, clk)
-      -- begin
-      -- end process;
+      
 
 
       p_asm : process(reset_n, clk)
@@ -88,7 +83,8 @@ begin
             if reset_n = '0' then
                   c               <= 0;
                   frame_valid_int <= '0';
-                  frame_int       <= (others => '0');  -- not strictly required TODO: Remove
+                  data_ready <= '1';
+                  --frame_int       <= (others => '0');  -- not strictly required TODO: Remove
 
             elsif rising_edge(clk) then
 
@@ -97,8 +93,13 @@ begin
                         if frame_ready = '1' then
                               c               <= 0;
                               frame_valid_int <= '0';
+                              data_ready <= '1';
                         end if;
                   else
+                        
+                        frame_valid_int  <= '0'; -- redundant
+                        data_ready <= '1';
+                        
                         -- If there is no input data to process then go
                         -- directly to the end of this process.
                         if data_valid = '1' then
@@ -135,6 +136,7 @@ begin
                                           frame_int(PACK9) <= data(6 downto 0);
                                           c                <= 0;
                                           frame_valid_int  <= '1';
+                                          data_ready <= '0';
                                     end if;
                               end if;
                         end if;

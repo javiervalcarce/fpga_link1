@@ -99,8 +99,6 @@ begin
             wait until rising_edge(clk);
             data_valid <= '1';
 
-            
-
             data <= X"9d";
             wait until rising_edge(clk);
             assert (frame_valid = '0') report "frame_valid <> 0" severity error;

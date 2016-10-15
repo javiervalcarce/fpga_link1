@@ -244,6 +244,9 @@ void* FpgaLink1::ThreadFn() {
       c = 0;
       
       while (1) {
+
+            usleep(10000); // 10 ms
+
             if (thread_exit_) {
                   break;
             }
@@ -255,7 +258,7 @@ void* FpgaLink1::ThreadFn() {
 
                   tx_cmd.type    = kIdle;
                   tx_cmd.address = 0x00AABBCC;        // 24-bit address
-                  tx_cmd.data32  = 0x55667788;        //idle_frame_count;  // 32-bit data, this field is incremented each time we send a kIdle frame
+                  tx_cmd.data32  = idle_frame_count;  //0x55667788;        //idle_frame_count;  // 32-bit data, this field is incremented each time we send a kIdle frame
       
                   Encoder(tx_cmd, &tx_ser);
                   n = RobustWR(fd_, tx_ser.data, tx_ser.size, 50);
