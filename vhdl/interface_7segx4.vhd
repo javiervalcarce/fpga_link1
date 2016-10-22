@@ -18,8 +18,8 @@ use ieee.std_logic_unsigned.all;
 
 entity interface_7segx4 is
       port (
-            reset    : in  std_logic;
-            clk50MHz : in  std_logic;
+            reset_n  : in  std_logic;
+            clk      : in  std_logic;
             di       : in  std_logic_vector(15 downto 0);
             an       : out std_logic_vector(3 downto 0);  -- enable visualizers
             do       : out std_logic_vector(7 downto 0)  -- data for each 7-seg display
@@ -30,7 +30,7 @@ end interface_7segx4;
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-architecture behavioral of interface_7segx4 is
+architecture rtl of interface_7segx4 is
 
       signal muxo : std_logic_vector(3 downto 0);  -- mux output
       signal msel : std_logic_vector(1 downto 0);  -- mux sel  
@@ -45,14 +45,14 @@ begin
       -- Clock divider, from 50MHz to aprox. 1kHz
       -- THE CLOCK SIGNAL THAT DRIVES THIS COUNTER MUST BE SLOW ENOUGHT TO LET THE
       -- DIODES BRIGH CONSIDERING THE SWITCH SPEED OF THIS DEVICES. f = 1kHz is ok.
-      process (reset, clk50MHz)
+      process (reset_n, clk)
             variable c : integer range 0 to 50000;
       begin
-            if reset = '1' then
+            if reset_n = '0' then
                   c    := 0;
                   msel <= "00";
 
-            elsif rising_edge(clk50MHz) then
+            elsif rising_edge(clk) then
                   c := c + 1;
                   if c = 0 then
                         msel <= msel + 1;
@@ -91,4 +91,4 @@ begin
             "10000110" when muxo = "1110" else  -- E
             "10001110" when muxo = "1111";      -- F
 
-end behavioral;
+end rtl;

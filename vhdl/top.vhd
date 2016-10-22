@@ -84,9 +84,24 @@ architecture rtl of top is
       signal rx_valid : std_logic;
       signal rx_ready : std_logic;
 
-      signal frame_dec_data  : std_logic_vector(69 downto 00);
+      signal frame_dec_data  : std_logic_vector(61 downto 00);
       signal frame_dec_valid : std_logic;
       signal frame_dec_ready : std_logic;
+      
+      
+      signal frame_enc_data  : std_logic_vector(61 downto 00);
+      signal frame_enc_valid : std_logic;
+      signal frame_enc_ready : std_logic;
+      
+      --apb signals
+      
+      signal psel    : std_logic;
+      signal pwrite  : std_logic;
+      signal penable : std_logic;
+      signal paddr   : std_logic_vector(23 DOWNTO 00);  
+      signal pwdata  : std_logic_vector(31 DOWNTO 00);
+      signal prdata  : std_logic_vector(31 DOWNTO 00);
+      signal pready  : std_logic;
       
 begin
       -- tmp debug
@@ -172,12 +187,41 @@ begin
             frame_ready => frame_dec_ready
       );
 
-      seg : entity work.interface_7segx4 port map (
-            reset    => reset,
-            clk50MHz => clk,
-            di       => frame_dec_data(23 downto 08),
-            an       => if7seg_an,
-            do       => if7seg_do
+  apb : entity work.apb_master port map (
+
+      clk         => clk,
+      reset_n     => reset_n,
+      -- frame i/o
+      frame_dec_data => frame_dec_data,
+      frame_dec_valid => frame_dec_valid,
+      frame_dec_ready => frame_dec_ready, 
+      frame_enc_data  => frame_enc_data,
+      frame_enc_valid => frame_enc_valid,
+      frame_enc_ready => frame_enc_ready,  
+      --APB IF 
+      psel         => psel,
+      pwrite       => pwrite,
+      penable      => penable,
+      paddr        => paddr,
+      pwdata       => pwdata,
+      prdata       => prdata,
+      pready       => pready
+  );
+
+      seg : entity work.interface_7segx4_apb port map (
+            reset_n  => reset_n,
+            clk      => clk,
+            psel      => psel,
+            penable   => penable,
+            pwrite    => pwrite,
+            paddr     => paddr,
+            pwdata    => pwdata,
+            prdata_in => X"00_00_00_00",
+            pready_in => '0',
+            prdata    => prdata,
+            pready    => pready,
+            do        => if7seg_do,
+            an        => if7seg_an  
       );
       
 end rtl;

@@ -42,10 +42,10 @@ architecture sim of frame_dec_tb is
       
       signal reset_n      : std_logic;
       signal clk          : std_logic;
-      signal data         : std_logic_vector(7  downto 0);
+      signal data         : std_logic_vector(07 downto 00);
       signal data_valid   : std_logic;
       signal data_ready   : std_logic;
-      signal frame        : std_logic_vector(69 downto 0);
+      signal frame        : std_logic_vector(61 downto 00);
       signal frame_valid  : std_logic;
       signal frame_ready  : std_logic;
 

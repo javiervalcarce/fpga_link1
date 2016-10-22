@@ -45,7 +45,7 @@ entity frame_dec is
             data        : in  std_logic_vector(07 downto 00);
             data_valid  : in  std_logic;
             data_ready  : out std_logic;
-            frame       : out std_logic_vector(69 downto 00);  -- 10 bytes * 7 bits/byte=70 bits 
+            frame       : out std_logic_vector(61 downto 00);  -- 10 bytes * 7 bits/byte=70 bits -8 bits crc
             frame_valid : out std_logic;
             frame_ready : in  std_logic);
 end frame_dec;
@@ -66,17 +66,14 @@ architecture rtl of frame_dec is
       subtype PACK8 is natural range 13 downto 07;
       subtype PACK9 is natural range 06 downto 00;
 
-      signal frame_int       : std_logic_vector(69 downto 00);  -- 70 bits
+      signal frame_int       : std_logic_vector(69 downto 00);  -- 62 bits
       signal frame_valid_int : std_logic;
       signal c               : integer range 0 to 9;
 
 
 begin
-      frame       <= frame_int;
+      frame       <= frame_int(69 downto 08); -- Elimino el CRC de 8 bits (LSB).
       frame_valid <= frame_valid_int;
-
-      
-
 
       p_asm : process(reset_n, clk)
       begin
