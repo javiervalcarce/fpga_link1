@@ -38,10 +38,17 @@ architecture rtl of apb_master is
  
 --  signal invalid_address      : std_logic;
 --  signal bus_access           : std_logic;  
-  
-  
-  constant CODE_RD : natural := 2;
-  constant CODE_WR : natural := 3;
+ 
+
+  constant CODE_IDLE         : natural := 16#1#;
+  constant CODE_READ32       : natural := 16#2#;
+  constant CODE_WRITE32      : natural := 16#3#;
+  constant CODE_IDLE_ACK     : natural := 16#8#;
+  constant CODE_READ32_ACK   : natural := 16#9#;
+  constant CODE_READ32_NACK  : natural := 16#a#;
+  constant CODE_WRITE32_ACK  : natural := 16#b#;
+  constant CODE_WRITE32_NACK : natural := 16#c#;
+  constant CODE_INTERRUPT    : natural := 16#f#;
   
 begin
   paddr <= paddr_int;
@@ -57,6 +64,8 @@ begin
   frame_enc_data(55 downto 32) <= paddr_int;
   frame_enc_data(31 downto 00) <= prdata;
   
+  -- TODO: Lectura
+  frame_enc_valid <= '0';
 
  CTL : block
    type   state_type is (IDLE, RD0, RD1, WR0, WR1, RDY);
@@ -73,9 +82,9 @@ begin
        case (state) is
          when IDLE => 
           if frame_dec_valid = '1' then 
-            if rx_code = CODE_RD then
+            if rx_code = CODE_READ32 then
               state <= RD0;
-            elsif rx_code = CODE_WR then
+            elsif rx_code = CODE_WRITE32 then
               state <= WR0; 
             end if;
           end if;
@@ -100,10 +109,10 @@ begin
    begin
      case state is
        when IDLE => psel <= '0'; penable <= '0'; pwrite <= '0'; frame_dec_ready <= '0';
-       when RD0  => psel <= '0'; penable <= '0'; pwrite <= '0'; frame_dec_ready <= '0';
-       when RD1  => psel <= '0'; penable <= '0'; pwrite <= '0'; frame_dec_ready <= '0';
-       when WR0  => psel <= '0'; penable <= '0'; pwrite <= '1'; frame_dec_ready <= '0';
-       when WR1  => psel <= '0'; penable <= '0'; pwrite <= '1'; frame_dec_ready <= '0';
+       when RD0  => psel <= '1'; penable <= '0'; pwrite <= '0'; frame_dec_ready <= '0';
+       when RD1  => psel <= '1'; penable <= '1'; pwrite <= '0'; frame_dec_ready <= '0';
+       when WR0  => psel <= '1'; penable <= '0'; pwrite <= '1'; frame_dec_ready <= '0';
+       when WR1  => psel <= '1'; penable <= '1'; pwrite <= '1'; frame_dec_ready <= '0';
        when RDY  => psel <= '0'; penable <= '0'; pwrite <= '0'; frame_dec_ready <= '1';
      end case;
    end process;

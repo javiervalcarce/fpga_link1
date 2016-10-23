@@ -24,9 +24,8 @@
 ------------------------------------------------------------------------------------------------------------------------
 
 library IEEE;
-use IEEE.STD_LOGIC_1164.all;
-use IEEE.STD_LOGIC_ARITH.all;
-use IEEE.STD_LOGIC_UNSIGNED.all;
+USE IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.numeric_std.all;
 
 ------------------------------------------------------------------------------------------------------------------------
 --
@@ -52,20 +51,10 @@ end top;
 ------------------------------------------------------------------------------------------------------------------------
 architecture rtl of top is
 
-      subtype PACK0 is natural range 69 downto 63;
-      subtype PACK1 is natural range 62 downto 56;
-      subtype PACK2 is natural range 55 downto 49;
-      subtype PACK3 is natural range 48 downto 42;
-      subtype PACK4 is natural range 41 downto 35;
-      subtype PACK5 is natural range 34 downto 28;
-      subtype PACK6 is natural range 27 downto 21;
-      subtype PACK7 is natural range 20 downto 14;
-      subtype PACK8 is natural range 13 downto 07;
-      subtype PACK9 is natural range 06 downto 00;
-
-
+      -- Puerto serie. Generación de pulsos en16
       signal en16     : std_logic;
       signal counter  : unsigned(15 downto 0);
+      
       signal reset    : std_logic;        
       signal reset_n  : std_logic;
       signal clk_slow : std_logic;
@@ -108,7 +97,7 @@ begin
       tx_data  <= (others => '0');
       tx_valid <= '0';
       frame_dec_ready <= '1'; -- siepre listos para recibir una nueva trama
-      --
+      
 
       
       counter  <= counter + 1 when rising_edge(clk);
@@ -187,6 +176,19 @@ begin
             frame_ready => frame_dec_ready
       );
 
+
+
+  enc : entity work.frame_enc port map (
+           reset_n     => reset_n,
+           clk         => clk,
+           octet_data  => tx_data,
+           octet_valid => tx_valid,
+           octet_ready => tx_ready,
+           frame_data  => frame_dec_data,
+           frame_valid => frame_dec_valid,
+           frame_ready => frame_dec_ready
+  );
+  
   apb : entity work.apb_master port map (
 
       clk         => clk,

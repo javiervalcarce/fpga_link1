@@ -2,6 +2,7 @@
 ------------------------------------------------------------------------------------------------------------------------
 --
 -- Byte Stream Deserializer 70-bit Frame Decoder
+--
 -- Created:           2016-08-01
 -- Last Modification: 2016-08-01
 --
@@ -25,19 +26,18 @@
 ------------------------------------------------------------------------------------------------------------------------
 
 library IEEE;
-use IEEE.STD_LOGIC_1164.all;
-use IEEE.STD_LOGIC_ARITH.all;
-use IEEE.STD_LOGIC_UNSIGNED.all;
+USE IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.numeric_std.all;
 
 
 entity frame_enc is
       port (
             reset_n     : in  std_logic;
             clk         : in  std_logic;
-            data        : out std_logic_vector(7 downto 0);
-            data_valid  : out std_logic;
-            data_ready  : in  std_logic;
-            frame       : in  std_logic_vector(69 downto 0);
+            octet_data  : out std_logic_vector(07 downto 00);
+            octet_valid : out std_logic;
+            octet_ready : in  std_logic;
+            frame_data  : in  std_logic_vector(61 downto 00);
             frame_valid : in  std_logic;
             frame_ready : out std_logic);
 end frame_enc;
@@ -45,10 +45,10 @@ end frame_enc;
 ------------------------------------------------------------------------------------------------------------------------
 architecture rtl of frame_enc is
 
-      subtype PACK0 is natural range 69 downto 63;
-      subtype PACK1 is natural range 62 downto 56;
-      subtype PACK2 is natural range 55 downto 49;
-      subtype PACK3 is natural range 48 downto 42;
+      subtype PACK0 is natural range 69 downto 63;  -- 6 bits.
+      subtype PACK1 is natural range 62 downto 56;  -- 7 bits.
+      subtype PACK2 is natural range 55 downto 49;  -- 7 bits.
+      subtype PACK3 is natural range 48 downto 42;  -- etc
       subtype PACK4 is natural range 41 downto 35;
       subtype PACK5 is natural range 34 downto 28;
       subtype PACK6 is natural range 27 downto 21;
@@ -57,17 +57,17 @@ architecture rtl of frame_enc is
       subtype PACK9 is natural range 06 downto 00;
 
       
-      signal frame_reg : std_logic_vector(69 downto 0);
+      signal frame_reg : std_logic_vector(61 downto 0);
 
       -- micro operations
       signal wr              : std_logic;
       signal sel             : natural range 9 downto 0;
       signal frame_ready_int : std_logic;
-      signal data_valid_int  : std_logic;
+      signal octet_valid_int  : std_logic;
       
 begin
       
-      data_valid  <= data_valid_int;
+      octet_valid  <= octet_valid_int;
       frame_ready <= frame_ready_int;
 
       -- Input register
@@ -77,7 +77,9 @@ begin
                   frame_reg <= (others => '0');  -- IS necessary? I guess no
             elsif rising_edge(clk) then
                   if wr = '1' then
-                        frame_reg <= frame;
+                        --frame_reg(69 downto 08) <= frame_data;
+								--frame_reg(07 downto 00) <= X"00"; -- crc se envía al final de la FSM
+								frame_reg <= frame_data;
                   end if;
             end if;
       end process;
@@ -87,16 +89,16 @@ begin
       p_mux : process(frame_reg, sel)
       begin
             case sel is
-                  when 0 => data <= "0" & frame_reg(PACK0);
-                  when 1 => data <= "0" & frame_reg(PACK1);
-                  when 2 => data <= "0" & frame_reg(PACK2);
-                  when 3 => data <= "0" & frame_reg(PACK3);
-                  when 4 => data <= "0" & frame_reg(PACK4);
-                  when 5 => data <= "0" & frame_reg(PACK5);
-                  when 6 => data <= "0" & frame_reg(PACK6);
-                  when 7 => data <= "0" & frame_reg(PACK7);
-                  when 8 => data <= "0" & frame_reg(PACK8);
-                  when 9 => data <= "1" & frame_reg(PACK9); 
+                  when 0 => octet_data <= "10" & frame_reg(PACK0);
+                  when 1 => octet_data <= "0" & frame_reg(PACK1);
+                  when 2 => octet_data <= "0" & frame_reg(PACK2);
+                  when 3 => octet_data <= "0" & frame_reg(PACK3);
+                  when 4 => octet_data <= "0" & frame_reg(PACK4);
+                  when 5 => octet_data <= "0" & frame_reg(PACK5);
+                  when 6 => octet_data <= "0" & frame_reg(PACK6);
+                  when 7 => octet_data <= "0" & frame_reg(PACK7);
+                  when 8 => octet_data <= "0" & frame_reg(PACK8);
+                  when 9 => octet_data <= "0" & frame_reg(PACK9);--crc 
             end case;
             
       end process;
@@ -127,17 +129,17 @@ begin
                                     if frame_valid = '1' then
                                           state <= B0;
                                     end if;
-                              when B0  => if data_ready = '1' then state <= B1; end if;
-                              when B1  => if data_ready = '1' then state <= B1; end if;  
-                              when B2  => if data_ready = '1' then state <= B1; end if;  
-                              when B3  => if data_ready = '1' then state <= B1; end if;                                      
-                              when B4  => if data_ready = '1' then state <= B1; end if;  
-                              when B5  => if data_ready = '1' then state <= B1; end if;  
-                              when B6  => if data_ready = '1' then state <= B1; end if;                                      
-                              when B7  => if data_ready = '1' then state <= B1; end if;  
-                              when B8  => if data_ready = '1' then state <= B1; end if;  
-                              when B9  => if data_ready = '1' then state <= B1; end if;
-                              when CRC => if data_ready = '1' then state <= B1; end if;
+                              when B0  => if octet_ready = '1' then state <= B1; end if;
+                              when B1  => if octet_ready = '1' then state <= B1; end if;  
+                              when B2  => if octet_ready = '1' then state <= B1; end if;  
+                              when B3  => if octet_ready = '1' then state <= B1; end if;                                      
+                              when B4  => if octet_ready = '1' then state <= B1; end if;  
+                              when B5  => if octet_ready = '1' then state <= B1; end if;  
+                              when B6  => if octet_ready = '1' then state <= B1; end if;                                      
+                              when B7  => if octet_ready = '1' then state <= B1; end if;  
+                              when B8  => if octet_ready = '1' then state <= B1; end if;  
+                              when B9  => if octet_ready = '1' then state <= B1; end if;
+                              when CRC => if octet_ready = '1' then state <= B1; end if;
                         end case;
                   end if;
             end process;
@@ -149,29 +151,25 @@ begin
                   sel <= 0;
                   wr <= '0';
                   frame_ready_int <= '0';
-                  data_valid_int <= '0';
+                  octet_valid_int <= '0';
                   
                   -- La funciÃ³n TRIM elimina los espacios de la cadena y devuelve un tipo
                   -- std_logic_vector con los elementos restantes (definida en work.conf)
                   case state is
                         when IDLE  =>
-                        when B0    => sel <= 0; data_valid_int <= '1';
-                        when B1    => sel <= 1; data_valid_int <= '1';
-                        when B2    => sel <= 2; data_valid_int <= '1';
-                        when B3    => sel <= 3; data_valid_int <= '1';
-                        when B4    => sel <= 4; data_valid_int <= '1';
-                        when B5    => sel <= 5; data_valid_int <= '1';
-                        when B6    => sel <= 6; data_valid_int <= '1';
-                        when B7    => sel <= 7; data_valid_int <= '1';
-                        when B8    => sel <= 8; data_valid_int <= '1';
-                        when B9    => sel <= 9; data_valid_int <= '1';
+                        when B0    => sel <= 0; 
+                        when B1    => sel <= 1; 
+                        when B2    => sel <= 2; 
+                        when B3    => sel <= 3; 
+                        when B4    => sel <= 4; 
+                        when B5    => sel <= 5; 
+                        when B6    => sel <= 6; 
+                        when B7    => sel <= 7; 
+                        when B8    => sel <= 8; 
+                        when B9    => sel <= 9; 
                         when CRC   => sel <= 0;                             
                   end case;
             end process;
       end block CTL;
-      
-
-
-      
 
 end rtl;

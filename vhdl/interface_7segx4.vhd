@@ -7,11 +7,9 @@
 --------------------------------------------------------------------------------
 
 
-library ieee;
-
-use ieee.std_logic_1164.all;
-use ieee.std_logic_arith.all;
-use ieee.std_logic_unsigned.all;
+library IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.numeric_std.all;
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -55,7 +53,7 @@ begin
             elsif rising_edge(clk) then
                   c := c + 1;
                   if c = 0 then
-                        msel <= msel + 1;
+                        msel <= std_logic_vector(unsigned(msel) + 1);
                   end if;
             end if;
       end process;
