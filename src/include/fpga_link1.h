@@ -48,7 +48,6 @@ namespace fpga_link1 {
                   // too large (outside the permited range).
                   kErrorWrongParameters,
 
-
                   // Device has informed that the requested read or write operation was unsuccesful (nack)
                   kErrorOperationNotAcknowledged,
                   
@@ -84,23 +83,15 @@ namespace fpga_link1 {
 
             Error RegisterInterruptCallback(InterruptCallback f);
             
-            Error MemoryRD08(int reg, uint8_t* data);
             Error MemoryRD32(int reg, uint32_t* data);
-            //Error MemoryRD(int reg, uint8_t* data, int len);
-
-            //
-            Error MemoryWR08(int reg, uint8_t data);
-            Error MemoryWR32(int reg, uint32_t data);
+            Error MemoryWR32(int reg, uint32_t  data);
             
-            //Error MemoryWR(int reg, uint8_t* data, int len);
-
-            //
-            Error FifoRD(int reg, uint8_t* data, int len);
-            Error FifoWR(int reg, uint8_t* data, int len);
+            //Error FifoRD(int reg, uint8_t* data, int len);
+            //Error FifoWR(int reg, uint8_t* data, int len);
 
       private:
 
-            static const int kWaitForValidSleep = 1000;       // us, 1000 us = 1 ms
+            static const int kResponsePollPeriod = 2000;       // us, 2000 us = 2 ms
             static const int kIdleSleep = 1000;       // us, 1000 us = 1 ms
             static const int kIdleLinkPeriod = 200;   // ms
             

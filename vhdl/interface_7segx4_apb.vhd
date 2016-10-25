@@ -1,19 +1,14 @@
 -- Hi Emacs, this is -*- mode: vhdl; vhdl-basic-offset: 6 -*--
---------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 -- Interface to four 7-seg display to show 16-bit numbers in hexadecimal
 --
 -- Javier Valcarce García, javier.valcarce@gmail.com
 -- $Id$
---------------------------------------------------------------------------------
-
-
+------------------------------------------------------------------------------------------------------------------------
 library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
-USE ieee.std_logic_1164.all;
-USE ieee.numeric_std.all;
-
--------------------------------------------------------------------------------
--------------------------------------------------------------------------------
 
 entity interface_7segx4_apb is
       port (
@@ -49,7 +44,7 @@ architecture rtl of interface_7segx4_apb is
 
       -- I/O Registers Addresses
       constant IOADDR_BASE  : natural := 0;
-      constant IOADDR_VALUE : natural := IOADDR_BASE + 16#04#;
+      constant IOADDR_VALUE : natural := IOADDR_BASE + 4;
 
 begin
 
@@ -82,7 +77,6 @@ begin
       p_wr_ioregs : process (reset_n, clk)
       begin
             if reset_n = '0' then
-
                   -- DEFAULT VALUES AT RESET
                   r.value <= (others => '0');
             elsif rising_edge(clk) then
@@ -103,7 +97,7 @@ begin
       p_rd_ioregs : process(address4byte, r)
       begin
             case to_integer(address4byte) is
-                  when IOADDR_VALUE => prdata_int <= std_logic_vector(r.value);
+                  when IOADDR_VALUE => prdata_int <= X"00_00" & std_logic_vector(r.value);
                   when others       => prdata_int <= X"CA_CA_CA_CA";
             end case;
 

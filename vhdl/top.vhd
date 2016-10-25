@@ -92,14 +92,11 @@ architecture rtl of top is
       signal prdata  : std_logic_vector(31 DOWNTO 00);
       signal pready  : std_logic;
       
+		constant CLK_FREQUENCY : natural := 50_000_000;
+		constant SERIAL_PORT_SPEED : natural := 9600;
+		
 begin
-      -- tmp debug
-      tx_data  <= (others => '0');
-      tx_valid <= '0';
-      frame_dec_ready <= '1'; -- siepre listos para recibir una nueva trama
-      
-
-      
+            
       counter  <= counter + 1 when rising_edge(clk);
       clk_slow <= counter(15);  -- 50 MHz / 2^16 = 763Hz for debouncing flip-flops
       
@@ -118,7 +115,7 @@ begin
             --
             -- Fclk = 50 MHz, bps = 9600 => Cada 50e6/9600/16 = 326 con un
             -- error relativo del 0,15 %
-            variable c : integer range 0 to 326;
+            variable c : natural range 0 to CLK_FREQUENCY/SERIAL_PORT_SPEED; --326;
       begin
             if reset_n = '0' then
                   en16 <= '0';
@@ -167,11 +164,11 @@ begin
             clk         => clk,
             reset_n     => reset_n,
 				-- in
-            data        => rx_data,
-            data_valid  => rx_valid,
-            data_ready  => rx_ready,
+            octet_data  => rx_data,
+            octet_valid => rx_valid,
+            octet_ready => rx_ready,
             -- out
-            frame       => frame_dec_data,
+            frame_data  => frame_dec_data,
             frame_valid => frame_dec_valid,
             frame_ready => frame_dec_ready
       );
@@ -184,9 +181,9 @@ begin
            octet_data  => tx_data,
            octet_valid => tx_valid,
            octet_ready => tx_ready,
-           frame_data  => frame_dec_data,
-           frame_valid => frame_dec_valid,
-           frame_ready => frame_dec_ready
+           frame_data  => frame_enc_data,
+           frame_valid => frame_enc_valid,
+           frame_ready => frame_enc_ready
   );
   
   apb : entity work.apb_master port map (
@@ -194,7 +191,7 @@ begin
       clk         => clk,
       reset_n     => reset_n,
       -- frame i/o
-      frame_dec_data => frame_dec_data,
+      frame_dec_data  => frame_dec_data,
       frame_dec_valid => frame_dec_valid,
       frame_dec_ready => frame_dec_ready, 
       frame_enc_data  => frame_enc_data,
@@ -219,7 +216,7 @@ begin
             paddr     => paddr,
             pwdata    => pwdata,
             prdata_in => X"00_00_00_00",
-            pready_in => '0',
+            pready_in => '1',
             prdata    => prdata,
             pready    => pready,
             do        => if7seg_do,

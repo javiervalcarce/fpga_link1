@@ -45,7 +45,7 @@ end frame_enc;
 ------------------------------------------------------------------------------------------------------------------------
 architecture rtl of frame_enc is
 
-      subtype PACK0 is natural range 69 downto 63;  -- 6 bits.
+      subtype PACK0 is natural range 69 downto 63;  -- 7 bits.
       subtype PACK1 is natural range 62 downto 56;  -- 7 bits.
       subtype PACK2 is natural range 55 downto 49;  -- 7 bits.
       subtype PACK3 is natural range 48 downto 42;  -- etc
@@ -56,8 +56,7 @@ architecture rtl of frame_enc is
       subtype PACK8 is natural range 13 downto 07;
       subtype PACK9 is natural range 06 downto 00;
 
-      
-      signal frame_reg : std_logic_vector(61 downto 0);
+      signal frame_reg : std_logic_vector(69 downto 00);
 
       -- micro operations
       signal wr              : std_logic;
@@ -66,7 +65,6 @@ architecture rtl of frame_enc is
       signal octet_valid_int  : std_logic;
       
 begin
-      
       octet_valid  <= octet_valid_int;
       frame_ready <= frame_ready_int;
 
@@ -79,7 +77,7 @@ begin
                   if wr = '1' then
                         --frame_reg(69 downto 08) <= frame_data;
 								--frame_reg(07 downto 00) <= X"00"; -- crc se envía al final de la FSM
-								frame_reg <= frame_data;
+								frame_reg(69 downto 08) <= frame_data;
                   end if;
             end if;
       end process;
@@ -89,7 +87,7 @@ begin
       p_mux : process(frame_reg, sel)
       begin
             case sel is
-                  when 0 => octet_data <= "10" & frame_reg(PACK0);
+                  when 0 => octet_data <= "1" & frame_reg(PACK0); 
                   when 1 => octet_data <= "0" & frame_reg(PACK1);
                   when 2 => octet_data <= "0" & frame_reg(PACK2);
                   when 3 => octet_data <= "0" & frame_reg(PACK3);
@@ -98,9 +96,8 @@ begin
                   when 6 => octet_data <= "0" & frame_reg(PACK6);
                   when 7 => octet_data <= "0" & frame_reg(PACK7);
                   when 8 => octet_data <= "0" & frame_reg(PACK8);
-                  when 9 => octet_data <= "0" & frame_reg(PACK9);--crc 
+                  when 9 => octet_data <= "0" & frame_reg(PACK9); --crc 
             end case;
-            
       end process;
 
 
@@ -108,13 +105,10 @@ begin
       -- Control Unit
       -------------------------------------------------------------------------------
       CTL : block
-
             type state_type is (IDLE, B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, CRC);
-
             signal state : state_type;
             signal op    : std_logic_vector(2 downto 0);
       begin
-
             -- 2 procesos para separar la parte secuencial de la combinacional, de
             -- esta forma las salidas no son registros ("registered outputs") y por
             -- tanto no hay un ciclo de reloj de espera

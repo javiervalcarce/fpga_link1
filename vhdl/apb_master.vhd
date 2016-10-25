@@ -36,19 +36,15 @@ architecture rtl of apb_master is
   signal rx_code        : unsigned(05 downto 00); -- 6 bits
   signal paddr_int      : std_logic_vector(23 downto 00); 
  
---  signal invalid_address      : std_logic;
---  signal bus_access           : std_logic;  
- 
-
-  constant CODE_IDLE         : natural := 16#1#;
-  constant CODE_READ32       : natural := 16#2#;
-  constant CODE_WRITE32      : natural := 16#3#;
-  constant CODE_IDLE_ACK     : natural := 16#8#;
-  constant CODE_READ32_ACK   : natural := 16#9#;
-  constant CODE_READ32_NACK  : natural := 16#a#;
-  constant CODE_WRITE32_ACK  : natural := 16#b#;
-  constant CODE_WRITE32_NACK : natural := 16#c#;
-  constant CODE_INTERRUPT    : natural := 16#f#;
+  constant CODE_IDLE         : natural := 1;
+  constant CODE_READ32       : natural := 2;
+  constant CODE_WRITE32      : natural := 3;
+  constant CODE_IDLE_ACK     : natural := 8;
+  constant CODE_READ32_ACK   : natural := 9;
+  constant CODE_READ32_NACK  : natural := 10;
+  constant CODE_WRITE32_ACK  : natural := 11;
+  constant CODE_WRITE32_NACK : natural := 12;
+  constant CODE_INTERRUPT    : natural := 15;
   
 begin
   paddr <= paddr_int;
@@ -63,9 +59,7 @@ begin
   frame_enc_data(61 downto 56) <= B"000100";
   frame_enc_data(55 downto 32) <= paddr_int;
   frame_enc_data(31 downto 00) <= prdata;
-  
-  -- TODO: Lectura
-  frame_enc_valid <= '0';
+  frame_enc_valid <= '0'; --todo
 
  CTL : block
    type   state_type is (IDLE, RD0, RD1, WR0, WR1, RDY);
@@ -78,27 +72,31 @@ begin
    begin
      if reset_n = '0' then
        state <= IDLE;
+		 
      elsif rising_edge(clk) then
        case (state) is
          when IDLE => 
           if frame_dec_valid = '1' then 
-            if rx_code = CODE_READ32 then
-              state <= RD0;
-            elsif rx_code = CODE_WRITE32 then
+            --if rx_code = CODE_READ32 then
+              --state <= RD0;
+            --elsif rx_code = CODE_WRITE32 then
               state <= WR0; 
-            end if;
+            --end if;
           end if;
-         when RD0  => state <= RD1;
+         when RD0  => 
+				state <= RD1;
          when RD1  => 
             if pready = '1' then
               state <= RDY;
             end if;
-         when WR0  => state <= WR1;
+         when WR0  => 
+				state <= WR1;
          when WR1  => 
             if pready = '1' then
               state <= RDY;
             end if;
-         when RDY  => state <= IDLE;
+         when RDY  => 
+				state <= IDLE;
        end case;
      end if;
    end process;

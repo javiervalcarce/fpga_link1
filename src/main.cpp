@@ -6,11 +6,9 @@
  *
  *
  */
-
 #include <stdint.h>
 #include <unistd.h>
 #include <getopt.h>
-
 
 #include <cstdio>
 #include <cstdlib>
@@ -26,19 +24,13 @@ using fpga_link1::FpgaLink1;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1* com = NULL;
 
-
 std::string param_port;
 int param_speed;
-
-
 
 //const std::string kSerialPort("/dev/ttyS0");  // With Flow Control
 const std::string kSerialPort("/dev/cu.usbserial-FTE5IS5D");   // Without Flow Control
 
-
 void ShowUsage();
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int Test1() {
@@ -75,27 +67,22 @@ int Test2() {
       
       return 0;
 }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
 
-      if (argc < 3) {
-            ShowUsage();
-            return 0;
-      }
-
-      param_port = argv[1];
-
+      
+      param_port = kSerialPort; //argv[1];
+      param_speed = 9600;
+      
+      /*
       char* endp;
       param_speed = strtoul(argv[2], &endp, 10);
       if (*endp != '\0') {
             printf("Error reading serial port speed\n");
             return 1;
       }
-
-
-      
-      Test2();
-      return 1;
+      */
       
       bool read;
 
@@ -108,42 +95,45 @@ int main(int argc, char* argv[]) {
             read = false;
       }
 
-
       com = new FpgaLink1(param_port, param_speed);
       if (com->Init() != 0) {
             printf("Error initializing comunication driver\n");
             return 1;
       }
 
-
       FpgaLink1::Error e;
       int reg;
       int val;
-      uint8_t ui8;
-
+      uint32_t ui32;
+      
       if (read) {
             reg = atoi(argv[1]);
 
-            e = com->MemoryRD08(reg, &ui8);
+            printf("Reading from %d\n", reg);
+            e = com->MemoryRD32(reg, &ui32);
             if (e != FpgaLink1::kErrorNo) {
                   printf("error\n");
                   return 1;
             }
 
-            printf("0x%02x\n", ui8);
+            printf("0x%02x\n", ui32);
       } else {
+
             reg = atoi(argv[1]);
             val = atoi(argv[2]);
-            ui8 = static_cast<uint8_t>(val);
-            e = com->MemoryWR32(reg,  ui8);
+            ui32 = static_cast<uint32_t>(val);
+
+
+            printf("Writing %d at %d\n", val, reg);
+            
+            e = com->MemoryWR32(reg,  ui32);
             if (e != FpgaLink1::kErrorNo) {
                   printf("error\n");
                   return 1;                  
             }
-
             printf("ok\n");
       }
-
+      
       return 0;
 }
 

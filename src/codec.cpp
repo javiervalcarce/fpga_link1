@@ -21,21 +21,8 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
 
       // Address space is only 24 bits, so do not assign the upper (MSB) 8 bits of address.
       assert((cmd.address & 0xff000000) == 0);
-
       
       switch (cmd.type) {          
-      case kWrite8:
-            tmp[0] = cmd.type;
-            tmp[1] = (cmd.address & 0x00ff0000) >> 16;
-            tmp[2] = (cmd.address & 0x0000ff00) >> 8;
-            tmp[3] = (cmd.address & 0x000000ff) >> 0;
-            tmp[4] = 0x00;
-            tmp[5] = 0x00;
-            tmp[6] = 0x00;
-            tmp[7] = cmd.data8;
-            tmp[8] = cmd.crc; // CRC
-            break;
-            
       case kIdle:
       case kWrite32:
             tmp[0] = cmd.type;
@@ -48,6 +35,18 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
             tmp[7] = (cmd.data32  & 0x000000ff) >> 0;
             tmp[8] = cmd.crc; // CRC
             break;
+      case kRead32:
+            tmp[0] = cmd.type;
+            tmp[1] = (cmd.address & 0x00ff0000) >> 16;
+            tmp[2] = (cmd.address & 0x0000ff00) >> 8;
+            tmp[3] = (cmd.address & 0x000000ff) >> 0;
+            tmp[4] = 0x00000000;
+            tmp[5] = 0x00000000;
+            tmp[6] = 0x00000000;
+            tmp[7] = 0x00000000;
+            tmp[8] = cmd.crc; // CRC
+            break;
+
       default:
             assert(false);
       }
@@ -62,14 +61,13 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
       serialized->data[5] = ((tmp[4] & 0b00000111) << 4) | ((tmp[5] & 0b11110000) >> 4);  // 3+4
       serialized->data[4] = ((tmp[3] & 0b00000011) << 5) | ((tmp[4] & 0b11111000) >> 3);  // 2+5
       serialized->data[3] = ((tmp[2] & 0b00000001) << 6) | ((tmp[3] & 0b11111100) >> 2);  // 1+6
-      serialized->data[2] = ((tmp[1] & 0b00000000) << 7) | ((tmp[2] & 0b11111110) >> 1);  // 0+7
-      
+      serialized->data[2] = ((tmp[1] & 0b00000000) << 7) | ((tmp[2] & 0b11111110) >> 1);  // 0+7      
       serialized->data[1] = ((tmp[1] & 0b01111111) << 0) | ((tmp[2] & 0b00000000) >> 0);  // 7+0
       serialized->data[0] = ((tmp[0] & 0b00111111) << 1) | ((tmp[1] & 0b10000000) >> 7);  // 6+1
 
       // First byte of encoded frame has its MSB set to '1', all others set to '0'.
       serialized->data[0] |= 0b10000000;
-      /*
+      
       printf("Encoder: Encoded Frame    : 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
              serialized->data[0],
              serialized->data[1],
@@ -81,7 +79,7 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
              serialized->data[7],
              serialized->data[8],
              serialized->data[9]);
-      */
+      
       
       return 0;
 }
@@ -117,7 +115,6 @@ int fpga_link1::Decoder(Command* cmd, SerializedCommand& serialized) {
       tmp[2] = ((serialized.data[2] & 0b01111111) << 1) | ((serialized.data[3] & 0b01000000) >> 6);
       tmp[1] = ((serialized.data[0] & 0b00000001) << 7) | ((serialized.data[1] & 0b01111111) >> 0);
       tmp[0] = ((serialized.data[0] & 0b00111110) >> 1);
-
       
 
       switch (tmp[0]) {

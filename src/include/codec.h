@@ -7,7 +7,8 @@
 namespace fpga_link1 {
 
 enum CommandType {
-
+      kNone        = 0x00,
+      
       // Querys (Host -> FPGA)
       kIdle        = 0x01,
       kRead32      = 0x02,     

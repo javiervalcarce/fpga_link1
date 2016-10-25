@@ -31,6 +31,8 @@ FpgaLink1::FpgaLink1(std::string device, int speed_bps) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::~FpgaLink1() {
+      thread_exit_ = true;
+      pthread_join(thread_, NULL);
       // Terminate first the internal thread
       if (fd_ != -1) {
             close(fd_);
@@ -41,15 +43,15 @@ FpgaLink1::~FpgaLink1() {
 FpgaLink1::Error FpgaLink1::Init() {
       int r;
 
-      // http://stackoverflow.com/questions/26498582/opening-a-serial-port-on-os-x-hangs-forever-without-o-nonblock-flag
+      // http://stackoverflow.com/questions/26498582/
+      // opening-a-serial-port-on-os-x-hangs-forever-without-o-nonblock-flag
       
       fd_ = open(device_.c_str(), O_RDWR | O_NOCTTY);
       if (fd_ == -1) {
             return kErrorNoSuchDevice;
       }
 
-      struct termios tio;
-      
+      struct termios tio;     
       r = tcgetattr(fd_, &tio);
       if (r != 0) {
             return kErrorTermios;
@@ -87,13 +89,6 @@ FpgaLink1::Error FpgaLink1::RegisterInterruptCallback(InterruptCallback f) {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1::Error FpgaLink1::MemoryRD08(int reg, uint8_t* data) {
-      assert(initialized_ == true);
-      *data = 0xfe;
-      return kErrorNo;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::Error FpgaLink1::MemoryRD32(int reg, uint32_t* data) {
       assert(initialized_ == true);
       *data = 0xfe;
@@ -101,54 +96,10 @@ FpgaLink1::Error FpgaLink1::MemoryRD32(int reg, uint32_t* data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-  FpgaLink1::Error FpgaLink1::MemoryRD(int reg, uint8_t* data, int len) {
-  assert(initialized_ == true);
-  int i;
-
-  for (i = 0; i < len; i++) {
-  data[i] = 0xfe;
-  }
-
-  return kErrorNo;
-  }
-*/
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1::Error FpgaLink1::MemoryWR08(int reg, uint8_t  data) {      
-      assert(initialized_ == true);
-
-      Command cmd;
-      SerializedCommand octet_stream;
-      
-      cmd.type = kWrite8;
-      cmd.address = static_cast<uint32_t>(reg) & 0x00FFFFFF;  // 24-bit address space
-      cmd.data8 = data;
-
-      Encoder(cmd, &octet_stream);
-      
-      int n;
-
-
-      
-      n = 0;
-      do {
-            n += write(fd_, octet_stream.data, octet_stream.size);
-            if (n == -1) {
-                  return kErrorIO;
-            }
-      } while (n < octet_stream.size);
-      
-      return kErrorNo;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
       assert(initialized_ == true);
 
-      Command cmd;
-      
+      Command cmd;     
       cmd.type = kWrite32;
       cmd.address = static_cast<uint32_t>(reg) & 0x00FFFFFF;  // 24-bit address space
       cmd.data32 = data;
@@ -165,8 +116,9 @@ FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
       tx_command_ = cmd;
       tx_command_valid_ = true; 
       pthread_mutex_unlock(&lock_);
-            
-      
+
+      int retries = 0;
+      cmd.type = kNone;
       // Wait for the reception of the answer in the rx buffer
       while (1) {
             pthread_mutex_lock(&lock_);
@@ -178,35 +130,16 @@ FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
             } 
             pthread_mutex_unlock(&lock_);
 
-            usleep(kWaitForValidSleep);
+            usleep(kResponsePollPeriod);
+            retries++;
+            if (retries > 60) break;
       }
-
 
       if (cmd.type != kWrite32Ack) {
             return kErrorProtocol;
       }
-      
+            
       return kErrorNo;      
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-  FpgaLink1::Error FpgaLink1::MemoryWR(int reg, uint8_t* data, int len) {
-  assert(initialized_ == true);
-  return kErrorNo;
-  }
-*/
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1::Error FpgaLink1::FifoRD(int reg, uint8_t* data, int len) {
-      assert(initialized_ == true);
-      return kErrorNo;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1::Error FpgaLink1::FifoWR(int reg, uint8_t* data, int len) {
-      assert(initialized_ == true);
-      return kErrorNo;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -222,14 +155,11 @@ void* FpgaLink1::ThreadFn() {
       // Other POSIX
       pthread_setname_np(thread_name_.c_str());
 #endif
-
-      
       uint8_t tmp[16];
       
       int n;
       int i;
       int c;
-      
 
       Command rx_cmd;
       Command tx_cmd;      
@@ -240,7 +170,6 @@ void* FpgaLink1::ThreadFn() {
       
       watch_.Reset();
       watch_.Start();
-
       c = 0;
       
       while (1) {
@@ -255,9 +184,9 @@ void* FpgaLink1::ThreadFn() {
             if (watch_.ElapsedMilliseconds() > kIdleLinkPeriod) {
                   watch_.Reset();
 
-
                   tx_cmd.type    = kIdle;
                   tx_cmd.address = 0x00AABBCC;        // 24-bit address
+                  
                   tx_cmd.data32  = idle_frame_count;  //0x55667788;        //idle_frame_count;  // 32-bit data, this field is incremented each time we send a kIdle frame
       
                   Encoder(tx_cmd, &tx_ser);
@@ -267,31 +196,36 @@ void* FpgaLink1::ThreadFn() {
                   } else if (n != tx_ser.size) {
                         // Tx Failed
                   } else {
-                        
+
+                             
                         printf("Tx IDLE Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
                                tx_ser.data[0], tx_ser.data[1], tx_ser.data[2], tx_ser.data[3], tx_ser.data[4],
                                tx_ser.data[5], tx_ser.data[6], tx_ser.data[7], tx_ser.data[8], tx_ser.data[9]);
                   }
                   
-                  idle_frame_count++;
-                                    
+                  idle_frame_count++;                                    
             }
-
 
             // TX SEGMENT ----------------------------------------------------------------------------------------------
             pthread_mutex_lock(&lock_);
+            
             if (tx_command_valid_) {
 
+                                  
                   tx_cmd = tx_command_;
                   
                   Encoder(tx_cmd, &tx_ser);
-                  n = RobustWR(fd_, tx_ser.data, tx_ser.size, 50);
+                  n = RobustWR(fd_, tx_ser.data, tx_ser.size, 100);
                   if (n == 0) {
                         // Tx Timeout
                   } else if (n != tx_ser.size) {
                         // Tx Failed
                   } else {
                         tx_command_valid_ = false;
+
+                        Decoder(&tx_cmd, tx_ser);
+                        printf("tx_cmd.type = %d; address=%08x; data=%08x\n", tx_cmd.type, tx_cmd.address,tx_cmd.data32);
+
                         printf("Tx Encoded Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
                                tx_ser.data[0], tx_ser.data[1], tx_ser.data[2], tx_ser.data[3], tx_ser.data[4],
                                tx_ser.data[5], tx_ser.data[6], tx_ser.data[7], tx_ser.data[8], tx_ser.data[9]);
@@ -300,17 +234,13 @@ void* FpgaLink1::ThreadFn() {
             pthread_mutex_unlock(&lock_);
             // TX SEGMENT ----------------------------------------------------------------------------------------------
 
-
-            
-            
             // If the rx buffer is not empty then... nothing to do here
             if (rx_command_valid_) {
                   continue;
             }
 
-
             // RX SEGMENT ----------------------------------------------------------------------------------------------
-            n = RobustRD(fd_, tmp, sizeof(tmp), 50);
+            n = RobustRD(fd_, tmp, sizeof(tmp), 100);
             if (n > 0) {
 
                   //printf("I have received %d characters\n", n);
@@ -354,8 +284,6 @@ void* FpgaLink1::ThreadFn() {
                   
             }
             // RX SEGMENT ----------------------------------------------------------------------------------------------
-
-
             
       }  // while (1)
 
