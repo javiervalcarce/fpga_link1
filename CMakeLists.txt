@@ -18,8 +18,13 @@ set (FPGALINK1_VERSION_MINOR 1)
 set (FPGALINK1_VERSION_MICRO 0)
 set (FPGALINK1_VERSION_STRING ${FPGALINK1_VERSION_MAJOR}.${FPGALINK1_VERSION_MINOR}.${FPGALINK1_VERSION_MICRO})
 
-set (fpgalink1_SRCS src/fpga_link1.cpp src/codec.cpp src/stopwatch.cpp src/crc.cpp)
-set (test_fpgalink1_SRCS src/main.cpp)
+# Biblioteca
+set (fpgalink1_SRCS src/fpga_link1.cpp src/fpga_link1_server.cpp src/codec.cpp src/stopwatch.cpp src/crc.cpp)
+
+# Programas
+set (fpgalink1_cli_SRCS src/main_cli.cpp)
+set (fpgalink1_srv_SRCS src/main_srv.cpp)
+
 
 set (CMAKE_VERBOSE_MAKEFILE on)
 
@@ -32,12 +37,13 @@ add_definitions ("-Wall -g -std=c++11")
 add_library(fpgalink1 SHARED ${fpgalink1_SRCS})
 set_target_properties(fpgalink1 PROPERTIES VERSION ${FPGALINK1_VERSION_STRING})
 
-add_executable(test_fpgalink1 ${test_fpgalink1_SRCS})
-#target_link_libraries(test_fpgalink1 fpgalink1 m pthread rt)
-target_link_libraries(test_fpgalink1 fpgalink1 m pthread)
+add_executable(fpgalink1_cli ${fpgalink1_cli_SRCS})
+add_executable(fpgalink1_srv ${fpgalink1_srv_SRCS})
 
+target_link_libraries(fpgalink1_cli fpgalink1 m pthread)
+target_link_libraries(fpgalink1_srv fpgalink1 m pthread)
 
 # Test unitarios
-add_executable(test_codec src/test_codec.cpp src/codec.cpp)
+#add_executable(test_codec src/test_codec.cpp src/codec.cpp)
 
 

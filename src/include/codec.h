@@ -6,7 +6,7 @@
 
 namespace fpga_link1 {
 
-enum CommandType {
+enum FrameType {
       kNone        = 0x00,
       
       // Querys (Host -> FPGA)
@@ -28,10 +28,10 @@ enum CommandType {
 };
 
 
-struct Command {
+struct Frame {
 
       // Type of command for the microelectronic system (8 bits field).
-      CommandType type;
+      FrameType type;
 
       // 24-bit address, valid rage is 0x00000000 to 0x00FFFFFF (24 bits field).
       uint32_t address;
@@ -49,14 +49,14 @@ struct Command {
 };
 
 
-struct SerializedCommand {
+struct SerializedFrame {
       uint8_t data[10];
       int size;
 };
 
 
-int Encoder(Command& cmd, SerializedCommand* serialized);
-int Decoder(Command* cmd, SerializedCommand& serialized);
+int Encoder(Frame& cmd, SerializedFrame* serialized);
+int Decoder(Frame* cmd, SerializedFrame& serialized);
 
 
 }

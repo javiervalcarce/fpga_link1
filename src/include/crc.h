@@ -7,10 +7,10 @@
 namespace fpga_link1 {
 
       // Returns 0 if CRC is ok, 1 if not match (crc error)
-      int CheckFrameCRC(Command& cmd);
+      int CheckFrameCRC(Frame& cmd);
 
       // Set the CRC corresponding to the frame contents. Returns always 0.
-      int WriteFrameCRC(Command* cmd);
+      int WriteFrameCRC(Frame* cmd);
 
 
 }

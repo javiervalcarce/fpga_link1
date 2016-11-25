@@ -11,8 +11,6 @@
 
 
 namespace fpga_link1 {
-
-      typedef void (*InterruptCallback)(uint16_t interrupt_number, uint32_t code);
       
       /**
        * An object of this class lets you send and receive data to an FPGA. At the FPGA side is required a specific
@@ -28,64 +26,74 @@ namespace fpga_link1 {
        *   transparent to this sofware.
        *
        */
-      class FpgaLink1 {
+      class FpgaLink1Server {
       public:
+
+
             
-            enum Error {
+            typedef int (*OperationCallback)(FrameType operation, uint32_t address, uint32_t* data);
+            
+            
+            enum class Error {
                   // No error.
-                  kErrorNo,
+                  No,
                  
                   // The specified device does not exist.
-                  kErrorNoSuchDevice,
+                  NoSuchDevice,
 
                   // Error while creating a the internal thread (with pthread_create).
-                  kErrorThreadCreation,
+                  ThreadCreation,
                   
                   // Error during calling tcgetattr(), settcaatr() and other <termios.h> apis
-                  kErrorTermios,
+                  Termios,
 
                   // One or more parameters are wrong, for example: a data buffer pointer is null or data buffer size is
                   // too large (outside the permited range).
-                  kErrorWrongParameters,
+                  WrongParameters,
 
                   // Device has informed that the requested read or write operation was unsuccesful (nack)
-                  kErrorOperationNotAcknowledged,
+                  OperationNotAcknowledged,
                   
                   // Input/output error, for example: during read(), write(), poll(), etc, operations. Comunications.
-                  kErrorIO,
+                  IO,
 
                   // Protocol error, device has sent an unexpected frame which does not correspond with the sent one.
-                  kErrorProtocol,
+                  Protocol,
 
                   // Other, not specified, error.
-                  kErrorGeneric
+                  Generic
             };
 
-
+            
             /**
              * Ctor.
              *
              * @param device The serial port device file, it will be setup <SPEED>-8N1
              * @param speed_bps Serial port speed in bits per second, use standard values like 115200, 38400, 9600, etc.
              */
-            FpgaLink1(std::string device, int speed_bps);
-            
-            
+            FpgaLink1Server(std::string device, int speed_bps);
+
             /**
              * Dtor.
              */
-            ~FpgaLink1();
+            ~FpgaLink1Server();
 
             /**
              * One-time (heavy) initialization.
              */
             Error Init();
 
-            Error RegisterInterruptCallback(InterruptCallback f);
-            
-            Error MemoryRD32(int reg, uint32_t* data);
-            Error MemoryWR32(int reg, uint32_t  data);
+            /**
+             * Send an interrupt frame to client.
+             */
+            Error SendInterrupt(int irq);
 
+            /**
+             * Registers a callback function which will be invoked when a RD or WR frame arrives.
+             */
+            Error RegisterCallback(OperationCallback f);
+
+            
       private:
 
             static const int kResponsePollPeriod = 2000;       // us, 2000 us = 2 ms
@@ -105,26 +113,24 @@ namespace fpga_link1 {
             int speed_;
             int fd_;
 
-            InterruptCallback func_;
+            OperationCallback func_;
 
             // Send and receive buffers, _valid variables indicates that the corresponding buffers are not empty.
             // Rx buffer, capacity = 1 command
             Frame rx_command_;
-            bool    rx_command_valid_;
+            bool  rx_command_valid_;
 
             // Tx buffer, capacity = 1 command
             Frame tx_command_;
-            bool    tx_command_valid_;
-            
+            bool  tx_command_valid_;
+
             static 
             void* ThreadFn(void* obj);
             void* ThreadFn();
 
             int RobustWR(int fd, uint8_t* s, int n, int timeout_ms);
             int RobustRD(int fd, uint8_t* s, int n, int timeout_ms);
-
-
-
+            
       };
 
 }

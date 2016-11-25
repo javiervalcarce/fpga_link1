@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Manual de la biblioteca librest</title>
+    <meta charset="utf-8"> 
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
+  </head>
+  <body>
+    <h1>FPGA Link 1 (UART)</h1>
+    
+    <h2>Introduction</h2>
+    
+    <h2>Encoding Technique for Frame Delimiting Over Serial Port</h2>
+    <p>
+      In this document is described a tecnique for frame delimiting, simple enoguth to be implemented easyly in VHDL.
+    </p>
+    <p>
+      The following technique is not known for its efficiency but has some important advantages: (a) has a consistent
+      overhead independent of the contents of payload data, (b) encode frames of variable size, (c) its implementacion
+      either in software or in hardware are relatively simple. The latter is important since the usual implementation of
+      the receiver is a microelectronic system in a FPGA.
+    </p>
+
+    <p>
+    </p>
+
+    
+    <table>
+      <caption>Frame Format. The first byte transmited is Byte 0</caption>
+      <thead>
+	<tr><td>Byte 0</td><td>Byte 1</td><td>Byte 2</td><td>Byte 3</td><td>Byte 4</td><td>Byte 5</td><td>Byte 6</td><td>Byte 7</td><td>Byte 8</td><td>Byte 9</td><td>Byte 10</td><td>Byte 11</td><td>Byte 12</td><td>Byte 13</td></tr>
+      </thead>
+      <tbody>
+	<tr><td>Opcode</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>DATA (MSB)</td><td>DATA</td><td>DATA</td><td>DATA (LSB)</td><td>CRC</td></tr>
+      </tbody>
+  </body>
+
+  
+</html>

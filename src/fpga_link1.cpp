@@ -99,7 +99,7 @@ FpgaLink1::Error FpgaLink1::MemoryRD32(int reg, uint32_t* data) {
 FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
       assert(initialized_ == true);
 
-      Command cmd;     
+      Frame cmd;     
       cmd.type = kWrite32;
       cmd.address = static_cast<uint32_t>(reg) & 0x00FFFFFF;  // 24-bit address space
       cmd.data32 = data;
@@ -161,10 +161,10 @@ void* FpgaLink1::ThreadFn() {
       int i;
       int c;
 
-      Command rx_cmd;
-      Command tx_cmd;      
-      SerializedCommand rx_ser;
-      SerializedCommand tx_ser;
+      Frame rx_cmd;
+      Frame tx_cmd;      
+      SerializedFrame rx_ser;
+      SerializedFrame tx_ser;
       
       uint32_t idle_frame_count = 0;
       

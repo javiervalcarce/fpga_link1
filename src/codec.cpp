@@ -15,7 +15,7 @@
   +------------------------------------------------------------------------------------------------------+
 
 */
-int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
+int fpga_link1::Encoder(Frame& cmd, SerializedFrame* serialized) {
 
       uint8_t tmp[9];
 
@@ -86,7 +86,7 @@ int fpga_link1::Encoder(Command& cmd, SerializedCommand* serialized) {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int fpga_link1::Decoder(Command* cmd, SerializedCommand& serialized) {
+int fpga_link1::Decoder(Frame* cmd, SerializedFrame& serialized) {
 
       uint8_t tmp[9];
 
@@ -119,13 +119,13 @@ int fpga_link1::Decoder(Command* cmd, SerializedCommand& serialized) {
 
       switch (tmp[0]) {
       case kWrite32:
-            cmd->type    = static_cast<CommandType>(tmp[0]);
+            cmd->type    = static_cast<FrameType>(tmp[0]);
             cmd->address = tmp[1] << 16 | tmp[2] <<  8 | tmp[3] << 0;
             cmd->data32  = tmp[4] << 24 | tmp[5] << 16 | tmp[6] << 8 | tmp[7] << 0;
             // CRC TODO
             break;
       case kIdle:
-            cmd->type    = static_cast<CommandType>(tmp[0]);
+            cmd->type    = static_cast<FrameType>(tmp[0]);
             cmd->address = 0x00a5a5a5;
             cmd->data32  = 0xa5a5a5a5;
             break;
