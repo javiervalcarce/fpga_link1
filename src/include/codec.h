@@ -7,24 +7,19 @@
 namespace fpga_link1 {
 
 enum FrameType {
-      kNone        = 0x00,
-      
       // Querys (Host -> FPGA)
-      kIdle        = 0x01,
+      kPing        = 0x01,
       kRead32      = 0x02,     
       kWrite32     = 0x03,
 
       // Responses (FPGA -> Host)
-      kIdleAck     = 0x08,
-      kIdleNack    = 0x09,
+      kPingAck     = 0x04,
+      kRead32Ack   = 0x05,
+      kRead32Nack  = 0x06,
+      kWrite32Ack  = 0x07,
+      kWrite32Nack = 0x08,
 
-      kRead32Ack   = 0x0a,
-      kRead32Nack  = 0x0b,
-
-      kWrite32Ack  = 0x0c,
-      kWrite32Nack = 0x0d,
-
-      kInterrupt   = 0x0f,
+      kInterrupt   = 0x09,
 };
 
 
@@ -37,11 +32,9 @@ struct Frame {
       uint32_t address;
 
       // Data to write to or read from a microelectronic system register (32 bits field).
-      union {
-            uint8_t data8;
-            uint16_t data16;
-            uint32_t data32;
-      };
+      
+      uint32_t data32;
+      
 
 
       // CRC
@@ -58,6 +51,30 @@ struct SerializedFrame {
 int Encoder(Frame& cmd, SerializedFrame* serialized);
 int Decoder(Frame* cmd, SerializedFrame& serialized);
 
+      class Codec {
+      public:
+            Codec();
+            ~Codec();
+
+            int Push(uint8_t c);            
+            int Front(Frame* new_frame);
+            int Pop();
+            bool Found();
+      private:
+
+            uint8_t buff_[10];
+            int size_;
+            
+            Frame frm_;
+            SerializedFrame ser_;
+            
+            
+            int count_;
+            bool found_;
+            
+            int n_;
+            
+      };
 
 }
 

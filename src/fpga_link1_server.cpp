@@ -97,8 +97,9 @@ void* FpgaLink1Server::ThreadFn() {
       int n;
       int i;
       int c;
-
-      uint8_t tmp[16];
+      int a;
+      
+      uint8_t tmp[1];
       Frame rx_cmd;
       Frame tx_cmd;      
       SerializedFrame rx_ser;
@@ -108,15 +109,57 @@ void* FpgaLink1Server::ThreadFn() {
       watch_.Reset();
       watch_.Start();
       c = 0;
+
+      Codec detector;
       
       while (1) {
-
-            usleep(10000); // 10 ms
 
             if (thread_exit_) {
                   break;
             }
 
+                        
+            a = 0;      
+            do {
+                  n = read(fd_, tmp, 1);
+                  a += n;
+
+                  detector.Push(tmp[0]);
+                  
+            } while (detector.Found() == false);
+
+            // decode
+            detector.Front(&rx_cmd);
+            detector.Pop();
+
+            if (rx_cmd.type != kPing) {
+                  if (func_ != nullptr) {
+                        func_(rx_cmd.type, rx_cmd.address, &rx_cmd.data32);
+                  }
+            }
+            
+            switch (rx_cmd.type) {
+            case kPing: tx_cmd.type = kPingAck; break;
+            case kRead32: tx_cmd.type = kRead32Ack; break;
+            case kWrite32: tx_cmd.type = kWrite32Ack; break;
+            default:
+                  // Comando desconocido.
+                  continue;
+                  break;
+            }
+            tx_cmd.address = rx_cmd.address;
+            tx_cmd.data32  = rx_cmd.data32;
+                  
+            // Frame Encoder
+            Encoder(tx_cmd, &tx_ser);
+            
+            a = 0;
+            do {
+                  n = write(fd_, tx_ser.data + a, tx_ser.size - a);
+                  a += n;
+            } while (a < tx_ser.size);
+            
+            
       }  // while (1)
 
       return NULL;
@@ -132,6 +175,8 @@ FpgaLink1Server::Error FpgaLink1Server::SendInterrupt(int irq) {
  * Registers a callback function which will be invoked when a RD or WR frame arrives.
  */
 FpgaLink1Server::Error FpgaLink1Server::RegisterCallback(OperationCallback f) {
+      assert(f != nullptr);
+      func_ = f;
       return Error::No;
 }
 

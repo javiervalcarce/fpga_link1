@@ -118,7 +118,9 @@ FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
       pthread_mutex_unlock(&lock_);
 
       int retries = 0;
-      cmd.type = kNone;
+
+      //cmd.type = kNone;
+      
       // Wait for the reception of the answer in the rx buffer
       while (1) {
             pthread_mutex_lock(&lock_);
@@ -174,7 +176,7 @@ void* FpgaLink1::ThreadFn() {
       
       while (1) {
 
-            usleep(10000); // 10 ms
+            usleep(10000);  // 10 ms
 
             if (thread_exit_) {
                   break;
@@ -184,20 +186,18 @@ void* FpgaLink1::ThreadFn() {
             if (watch_.ElapsedMilliseconds() > kIdleLinkPeriod) {
                   watch_.Reset();
 
-                  tx_cmd.type    = kIdle;
+                  tx_cmd.type    = kPing;
                   tx_cmd.address = 0x00AABBCC;        // 24-bit address
-                  
                   tx_cmd.data32  = idle_frame_count;  //0x55667788;        //idle_frame_count;  // 32-bit data, this field is incremented each time we send a kIdle frame
       
                   Encoder(tx_cmd, &tx_ser);
+                  
                   n = RobustWR(fd_, tx_ser.data, tx_ser.size, 50);
                   if (n == 0) {
                         // Tx Timeout
                   } else if (n != tx_ser.size) {
                         // Tx Failed
                   } else {
-
-                             
                         printf("Tx IDLE Frame: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
                                tx_ser.data[0], tx_ser.data[1], tx_ser.data[2], tx_ser.data[3], tx_ser.data[4],
                                tx_ser.data[5], tx_ser.data[6], tx_ser.data[7], tx_ser.data[8], tx_ser.data[9]);

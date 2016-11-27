@@ -69,7 +69,7 @@ namespace fpga_link1 {
              * Ctor.
              *
              * @param device The serial port device file, it will be setup <SPEED>-8N1
-             * @param speed_bps Serial port speed in bits per second, use standard values like 115200, 38400, 9600, etc.
+             * @param speed_bps Serial port speed in bits per second, use standard values like 115200, 57600, 38400, 9600, 4800, etc.
              */
             FpgaLink1Server(std::string device, int speed_bps);
 

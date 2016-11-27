@@ -18,59 +18,32 @@
 #include "fpga_link1_server.h"
 
 using fpga_link1::FpgaLink1Server;
+using fpga_link1::FrameType;
 
 
 // Bus I2C y 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1Server* com = NULL;
-
-std::string param_port;
-int param_speed;
 
 //const std::string kSerialPort("/dev/ttyS0");  // With Flow Control
 const std::string kSerialPort("/dev/cu.usbserial-FTE5IS5D");   // Without Flow Control
+//const std::string kSerialPort("/dev/ptyr6");   // Without Flow Control
+
+FpgaLink1Server* com = NULL;
+std::string param_port;
+int param_speed;
+
+uint32_t g_memory[1024];
+
 
 void ShowUsage();
+int OperationFunc(FrameType type, uint32_t address, uint32_t* data);
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int Test1() {
-      FpgaLink1Server::Error e;
-      
-      com = new FpgaLink1Server(param_port, param_speed);
-      e = com->Init();
-      
-      if (e != FpgaLink1Server::Error::No) {
-            printf("Error initializing comunication driver (%d)\n", static_cast<int>(e));
-            return 1;
-      }
 
-    
-      return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int Test2() {
-      FpgaLink1Server::Error e;
-            
-      com = new FpgaLink1Server(param_port, param_speed);
-      e = com->Init();
-      
-      if (e != FpgaLink1Server::Error::No) {
-            printf("Error initializing comunication driver (%d)\n", static_cast<int>(e));
-            return 1;
-      }
-
-      while (1) {
-            usleep(10000);
-      }
-      
-      return 0;
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
       
-      param_port = kSerialPort; //argv[1];
+      param_port = argv[1]; //kSerialPort; //argv[1];
       param_speed = 9600;
       
       /*
@@ -99,14 +72,15 @@ int main(int argc, char* argv[]) {
             return 1;
       }
 
-      FpgaLink1Server::Error e;
-      int reg;
-      int val;
-      uint32_t ui32;
-      
+      while (1) {
 
-      printf("ok\n");
+            g_memory[0] = 0xffffffff;
+            sleep(5);
 
+            g_memory[0] = 0xa5a5a5a5;
+            sleep(5);
+
+      }
       
       return 0;
 }
@@ -133,5 +107,16 @@ void ShowUsage() {
       printf("    (read the value of regiser 0x1a)\n");
       printf("\n");
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int OperationFunc(FrameType type, uint32_t address, uint32_t* data) {
+
+
+      printf("OperationFunc: type = %d, address=0x%08X, data=0x%08X\n", (int) type, address, *data);
+      
+      return 0;
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
