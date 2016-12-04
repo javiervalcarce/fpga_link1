@@ -54,7 +54,7 @@ namespace fpga_link1 {
              */
             struct FixedFrame {
                   // 62-bit frame (in data[0] only 6 LSB are sent, data[0] & 0x3f)
-                  char data[8];
+                  uint8_t data[8];
             };
 
             

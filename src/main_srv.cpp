@@ -120,6 +120,7 @@ int main(int argc, char* argv[]) {
             return 1;
       }
 
+      com->RegisterCallback(OperationFunc);
       while (1) {
             g_memory[0] = 0xffffffff;
             sleep(5);
@@ -146,7 +147,25 @@ void ShowUsage() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int OperationFunc(FrameType type, uint32_t address, uint32_t* data) {
-      printf("OperationFunc: type = %d, address=0x%08X, data=0x%08X\n", (int) type, address, *data);
+      
+      if (address > sizeof(g_memory) - 1) {
+            return 1;
+      }
+
+      switch (type) {
+      case FrameType::Read32:
+            printf("\nOperationFunc: Read32, address=0x%08X, data=0x%08X\n", address, *data);
+            *data = g_memory[address];
+            break;
+      case FrameType::Write32:
+            printf("\nOperationFunc: Write32, address=0x%08X, data=0x%08X\n", address, *data);
+            g_memory[address] = *data;
+            break;
+      default:
+            printf("\nOperationFunc: ??????, address=0x%08X, data=0x%08X\n", address, *data);
+            return 1;
+      }
+      
       return 0;
 }
 

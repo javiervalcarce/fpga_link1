@@ -3,6 +3,7 @@
 // platform
 #include <fcntl.h>
 #include <unistd.h>
+#include <poll.h>
 #include <termios.h>
 // c++
 #include <cassert>
@@ -58,37 +59,63 @@ FpgaLink1::Error FpgaLink1::RegisterInterruptCallback(InterruptCallback f) {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1::Error FpgaLink1::MemoryRD32(int reg, uint32_t* data) {
+FpgaLink1::Error FpgaLink1::MemoryRD32(uint32_t address, uint32_t* data, int timeout_ms) {
       assert(initialized_ == true);
 
-      Frame      tx_cmd;
-      Frame      rx_cmd;
+      Frame tx_cmd;
+      Frame rx_cmd;
       Framer::FixedFrame tx_ser;
       Framer::FixedFrame rx_ser;
       Framer::Error e;
+
+      struct pollfd fda[1];
+      int n;
+
+      assert((address & 0xff000000) == 0);
       
       tx_cmd.type    = FrameType::Read32;
-      tx_cmd.address = static_cast<uint32_t>(reg) & 0x00FFFFFF;  // 24-bit address space
+      tx_cmd.address = address & 0x00FFFFFF;  // 24-bit address space
       tx_cmd.data32  = 0x00000000;
+
+      //----------------------------------------------------------------------------------------------------------------          
+      fda[0].fd = framer_.TxQueueFileDescriptor();
+      fda[0].events = POLLOUT;
+      
+      n = poll(fda, 1, timeout_ms);
+      if (n == 0) {
+            return Error::Timeout;
+      }
+      
+      assert((fda[0].revents & POLLOUT) == POLLOUT);
 
       Encoder(tx_cmd, &tx_ser);
       e = framer_.TxQueueEnqueue(tx_ser,  500);
-      watch_.Reset();      
 
+      //----------------------------------------------------------------------------------------------------------------      
+
+      fda[0].fd = framer_.RxQueueFileDescriptor();
+      fda[0].events = POLLIN;
+      
+      n = poll(fda, 1, timeout_ms);
+      if (n == 0) {
+            return Error::Timeout;
+      }
+      
+      assert((fda[0].revents & POLLIN) == POLLIN);
+      
       e = framer_.RxQueueDequeue(&rx_ser, 500);
       Decoder(&rx_cmd, rx_ser);
       
       if (rx_cmd.type != FrameType::Read32Ack) {
-            return Error::Protocol;
+            return Error::OperationNotAcknowledged;
       }
 
       *data = rx_cmd.data32;
       return Error::No;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
+FpgaLink1::Error FpgaLink1::MemoryWR32(uint32_t address, uint32_t data, int timeout_ms) {
       assert(initialized_ == true);
 
       Frame      tx_cmd;
@@ -96,20 +123,25 @@ FpgaLink1::Error FpgaLink1::MemoryWR32(int reg, uint32_t data) {
       Framer::FixedFrame tx_ser;
       Framer::FixedFrame rx_ser;
       Framer::Error e;
-      
+
+      assert((address & 0xff000000) == 0);
+            
       tx_cmd.type    = FrameType::Write32;
-      tx_cmd.address = static_cast<uint32_t>(reg) & 0x00FFFFFF;  // 24-bit address space
+      tx_cmd.address = address & 0x00FFFFFF;  // 24-bit address space
       tx_cmd.data32  = data;
 
+      printf("a=%x, d=%x\n", address, data);
+      
       Encoder(tx_cmd, &tx_ser);
       e = framer_.TxQueueEnqueue(tx_ser,  500);
-      watch_.Reset();      
+      //watch_.Reset();      
 
+      
       e = framer_.RxQueueDequeue(&rx_ser, 500);
       Decoder(&rx_cmd, rx_ser);
       
       if (rx_cmd.type != FrameType::Write32Ack) {
-            return Error::Protocol;
+            return Error::OperationNotAcknowledged;
       }
             
       return Error::No;
@@ -140,7 +172,7 @@ void* FpgaLink1::ThreadFn() {
             if (thread_exit_) {
                   break;
             }
-            
+            /*
             // Transmission of kPing commands every kIdleLinkPeriod just to notify that the serial link is not broken
             if (watch_.ElapsedMilliseconds() > kIdleLinkPeriod) {
                   watch_.Reset();
@@ -158,7 +190,7 @@ void* FpgaLink1::ThreadFn() {
 
                   // ...
             }
-
+            */
             
             
       }  // while (1)

@@ -19,9 +19,9 @@ FpgaLink1Server::FpgaLink1Server(std::string device, int speed_bps) : framer_(de
       thread_exit_ = false;
       initialized_ = false;
       func_ = nullptr;
-      
+
       pthread_attr_init(&thread_attr_);
-      pthread_attr_setdetachstate(&thread_attr_, PTHREAD_CREATE_JOINABLE);  
+      pthread_attr_setdetachstate(&thread_attr_, PTHREAD_CREATE_JOINABLE);
       pthread_mutex_init(&lock_, NULL);
 }
 
@@ -29,7 +29,7 @@ FpgaLink1Server::FpgaLink1Server(std::string device, int speed_bps) : framer_(de
 FpgaLink1Server::~FpgaLink1Server() {
       thread_exit_ = true;
       pthread_join(thread_, NULL);
-      
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +37,7 @@ FpgaLink1Server::Error FpgaLink1Server::Init() {
       int r;
 
       assert(framer_.Init() == Framer::Error::No);
-      
+
       r = pthread_create(&thread_, &thread_attr_, FpgaLink1Server::ThreadFn, this);
       if (r != 0) {
             return Error::ThreadCreation;
@@ -57,13 +57,14 @@ void* FpgaLink1Server::ThreadFn() {
 
       watch_.Reset();
       watch_.Start();
-     
+
       Frame      reqf;  // Request frame
       Frame      resf;  // Response frame
       Framer::FixedFrame tx;
       Framer::FixedFrame rx;
       Framer::Error e;
-      
+
+
       while (1) {
 
             if (thread_exit_) {
@@ -78,19 +79,22 @@ void* FpgaLink1Server::ThreadFn() {
             if (e != Framer::Error::No) {
                   printf("RxQueue error\n");
             }
-            
+
             Decoder(&reqf, rx);
+
+            bool ack = true;
+
             
             if (reqf.type != FrameType::Ping) {
                   if (func_ != nullptr) {
-                        func_(reqf.type, reqf.address, &reqf.data32);
+                        ack = (func_(reqf.type, reqf.address, &reqf.data32) == 0);
                   }
             }
-            
+
             switch (reqf.type) {
-            case FrameType::Ping    : resf.type = FrameType::PingAck;    break;
-            case FrameType::Read32  : resf.type = FrameType::Read32Ack;  break;
-            case FrameType::Write32 : resf.type = FrameType::Write32Ack; break;
+            case FrameType::Ping    : resf.type = FrameType::PingAck; break;
+            case FrameType::Read32  : resf.type = ack ? FrameType::Read32Ack  : FrameType::Read32Nack;  break;
+            case FrameType::Write32 : resf.type = ack ? FrameType::Write32Ack : FrameType::Write32Nack; break;
             default:
                   // Comando desconocido.
                   continue;
@@ -98,10 +102,10 @@ void* FpgaLink1Server::ThreadFn() {
             }
             resf.address = reqf.address;
             resf.data32  = reqf.data32;
-            
+
             // Frame Encoder
             Encoder(resf, &tx);
-                        
+
             e = framer_.TxQueueEnqueue(tx, 500);
             if (e == Framer::Error::Timeout) {
                   printf("TxQueue timeout\n");
@@ -110,8 +114,8 @@ void* FpgaLink1Server::ThreadFn() {
             if (e != Framer::Error::No) {
                   printf("TxQueue error\n");
             }
-            
-            
+
+
       }  // while (1)
 
       return NULL;

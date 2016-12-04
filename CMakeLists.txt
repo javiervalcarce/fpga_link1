@@ -31,7 +31,7 @@ set (CMAKE_VERBOSE_MAKEFILE on)
 include_directories (src/include)
 
 # opciones de compilación (CFLAGS)
-add_definitions ("-Wall -g -std=c++11")
+add_definitions ("-Wall -Wextra -g -std=c++11")
 
 add_library(fpgalink1 SHARED ${fpgalink1_SRCS})
 set_target_properties(fpgalink1 PROPERTIES VERSION ${FPGALINK1_VERSION_STRING})

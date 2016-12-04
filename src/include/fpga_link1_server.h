@@ -95,9 +95,7 @@ namespace fpga_link1 {
 
             
       private:
-
-            static const int kResponsePollPeriod = 2000;       // us, 2000 us = 2 ms
-            static const int kIdleSleep = 1000;                // us, 1000 us = 1 ms
+                        
             static const int kIdleLinkPeriod = 200;            // ms
             
             bool initialized_;
@@ -113,9 +111,6 @@ namespace fpga_link1 {
             static 
             void* ThreadFn(void* obj);
             void* ThreadFn();
-
-            int RobustWR(int fd, uint8_t* s, int n, int timeout_ms);
-            int RobustRD(int fd, uint8_t* s, int n, int timeout_ms);
             
       };
 

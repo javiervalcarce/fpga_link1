@@ -49,23 +49,22 @@ int fpga_link1::Encoder(Frame& f, Framer::FixedFrame* s) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int fpga_link1::Decoder(Frame* cmd, Framer::FixedFrame& s) {
 
+      s.data[0]    = s.data[0] & 0x3F;
+      cmd->address = 0;
+      
+      cmd->type    = static_cast<FrameType>(s.data[0]);
+      cmd->address = s.data[1] << 16 | s.data[2] <<  8 | s.data[3] << 0;
+      cmd->data32  = s.data[4] << 24 | s.data[5] << 16 | s.data[6] << 8 | s.data[7] << 0;
+
+      /*
       switch (static_cast<FrameType>(s.data[0])) {
       case FrameType::Read32:
       case FrameType::Write32:
-            cmd->type    = static_cast<FrameType>(s.data[0]);
-            cmd->address = s.data[1] << 16 | s.data[2] <<  8 | s.data[3] << 0;
-            cmd->data32  = s.data[4] << 24 | s.data[5] << 16 | s.data[6] << 8 | s.data[7] << 0;
-            break;
       case FrameType::Ping:
       case FrameType::PingAck:
-            cmd->type    = static_cast<FrameType>(s.data[0]);
-            cmd->address = s.data[1] << 16 | s.data[2] <<  8 | s.data[3] << 0;
-            cmd->data32  = s.data[4] << 24 | s.data[5] << 16 | s.data[6] << 8 | s.data[7] << 0;
-            break;
-      default:
-            assert(false);
       }
-
+      */
+      
       return 0;
 }
 

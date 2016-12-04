@@ -193,7 +193,7 @@ void* Framer::ThreadFn() {
             if (n < 0) {
                   printf("poll ERROR\n");
             } else if (n == 0) {
-                  printf("poll timeout\n");
+                  //                  printf("poll timeout\n");
             } else {
 
                   /*
@@ -279,7 +279,6 @@ void* Framer::ThreadFn() {
 
                               printf("Received frame: ");
                               PrintFrame(rxf_);
-                              
                         }
                         
                         fda[RX].events &= ~POLLOUT;

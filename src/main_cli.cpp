@@ -37,8 +37,6 @@ int main(int argc, char* argv[]) {
       std::string port = kSerialPort;
       int speed = 9600;
       bool background = false;
-      int address;
-      int data;
 
       // Process comand line options
       static struct option long_options[] = {
@@ -101,57 +99,69 @@ int main(int argc, char* argv[]) {
       }
 
       /* Print any remaining command line arguments (not options). */
-      if (optind < argc) {
-            printf ("non-option ARGV-elements: ");
-            while (optind < argc) {
-                  printf ("%s ", argv[optind++]);
-            }
-            putchar ('\n');
-      }
 
-      
       bool read = false;
+      int param_count = argc - optind;
+      uint32_t address;
+      uint32_t data;
+      std::string str_address;
+      std::string str_data;
+      
+      if (param_count == 1) {
+            read = true;
+            str_address = argv[optind];
+      } else if (param_count == 2) {
+            read = false;
+            str_address = argv[optind];
+            optind++;
+            str_data = argv[optind];            
+      } else {
+            ShowUsage();
+            return 1;
+      }
+      
+            
+
+      address = strtoul(str_address.c_str(), &endp, 0);
+      if (*endp != '\0') {
+            printf("Error reading address\n");
+            return 1;
+      }
+      
+      data = strtoul(str_data.c_str(), &endp, 0);
+      if (*endp != '\0') {
+            printf("Error reading data\n");
+            return 1;
+      }
+      
+      printf("a[0x%x] d[0x%x]\n", address, data);
 
       com = new FpgaLink1(port, speed);
       if (com->Init() != FpgaLink1::Error::No) {
             printf("Error initializing comunication driver\n");
             return 1;
       }
-      /*
+
       FpgaLink1::Error e;
-      int reg;
-      int val;
-      uint32_t ui32;
       
       if (read) {
-            reg = atoi(argv[1]);
-
-            printf("Reading from %d\n", reg);
-            e = com->MemoryRD32(reg, &ui32);
+            e = com->MemoryRD32(address, &data, 500);
             if (e != FpgaLink1::Error::No) {
-                  printf("error\n");
+                  printf("read error\n");
                   return 1;
             }
 
-            printf("0x%02x\n", ui32);
+            printf("REG[%x] -> 0x%x\n", address, data);
       } else {
-
-            reg = atoi(argv[1]);
-            val = atoi(argv[2]);
-            ui32 = static_cast<uint32_t>(val);
-
-
-            printf("Writing %d at %d\n", val, reg);
-            
-            e = com->MemoryWR32(reg,  ui32);
+            e = com->MemoryWR32(address, data, 500);
             if (e != FpgaLink1::Error::No) {
-                  printf("error\n");
+                  printf("write error\n");
                   return 1;                  
             }
+
+            printf("REG[%x] <- 0x%x\n", address, data);
             printf("ok\n");
       }
-      */
-
       
       if (background) {
             while (1) {

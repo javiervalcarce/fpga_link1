@@ -10,8 +10,8 @@ namespace fpga_link1 {
 
       enum class FrameType {
             // Querys (Host -> FPGA)
-            Ping        = 0x01,
-            Read32      = 0x02,     
+                  Ping        = 0x01,
+                  Read32      = 0x02,     
                   Write32     = 0x03,
 
             // Responses (FPGA -> Host)

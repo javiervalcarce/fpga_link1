@@ -51,7 +51,10 @@ namespace fpga_link1 {
 
                   // Device has informed that the requested read or write operation was unsuccesful (nack)
                   OperationNotAcknowledged,
-                  
+
+                  // Timeout, device did not send a response.
+                  Timeout,
+                        
                   // Input/output error, for example: during read(), write(), poll(), etc, operations. Comunications.
                   IO,
 
@@ -84,8 +87,8 @@ namespace fpga_link1 {
 
             Error RegisterInterruptCallback(InterruptCallback f);
             
-            Error MemoryRD32(int reg, uint32_t* data);
-            Error MemoryWR32(int reg, uint32_t  data);
+            Error MemoryRD32(uint32_t address, uint32_t* data, int timeout_ms);
+            Error MemoryWR32(uint32_t address, uint32_t  data, int timeout_ms);
 
       private:
 
