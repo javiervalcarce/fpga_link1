@@ -191,7 +191,7 @@ void* FpgaLink1::ThreadFn() {
                   tx_cmd.data32  = idle_frame_count;  //0x55667788;        //idle_frame_count;  // 32-bit data, this field is incremented each time we send a kIdle frame
       
                   Encoder(tx_cmd, &tx_ser);
-                  
+                  /*
                   n = RobustWR(fd_, tx_ser.data, tx_ser.size, 50);
                   if (n == 0) {
                         // Tx Timeout
@@ -202,6 +202,7 @@ void* FpgaLink1::ThreadFn() {
                                tx_ser.data[0], tx_ser.data[1], tx_ser.data[2], tx_ser.data[3], tx_ser.data[4],
                                tx_ser.data[5], tx_ser.data[6], tx_ser.data[7], tx_ser.data[8], tx_ser.data[9]);
                   }
+                  */
                   
                   idle_frame_count++;                                    
             }
@@ -215,6 +216,7 @@ void* FpgaLink1::ThreadFn() {
                   tx_cmd = tx_command_;
                   
                   Encoder(tx_cmd, &tx_ser);
+                  /*
                   n = RobustWR(fd_, tx_ser.data, tx_ser.size, 100);
                   if (n == 0) {
                         // Tx Timeout
@@ -230,6 +232,8 @@ void* FpgaLink1::ThreadFn() {
                                tx_ser.data[0], tx_ser.data[1], tx_ser.data[2], tx_ser.data[3], tx_ser.data[4],
                                tx_ser.data[5], tx_ser.data[6], tx_ser.data[7], tx_ser.data[8], tx_ser.data[9]);
                   }
+                  */
+                  
             }
             pthread_mutex_unlock(&lock_);
             // TX SEGMENT ----------------------------------------------------------------------------------------------
@@ -252,7 +256,7 @@ void* FpgaLink1::ThreadFn() {
                         
                         rx_ser.data[c] = tmp[i];
                         c++;
-                        rx_ser.size = c;                        
+                        //rx_ser.size = c;                        
                         
                         if (c == 10) {
                               if ((rx_ser.data[0] & 0x80) == 0x80) {

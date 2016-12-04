@@ -8,7 +8,7 @@
 
 #include "stopwatch.h"
 #include "codec.h"
-
+#include "framer.h"
 
 namespace fpga_link1 {
       
@@ -86,7 +86,7 @@ namespace fpga_link1 {
             /**
              * Send an interrupt frame to client.
              */
-            Error SendInterrupt(int irq);
+            //Error SendInterrupt(int irq);
 
             /**
              * Registers a callback function which will be invoked when a RD or WR frame arrives.
@@ -103,26 +103,12 @@ namespace fpga_link1 {
             bool initialized_;
             pthread_t thread_;
             pthread_attr_t thread_attr_;
-            
-            pthread_mutex_t lock_;
-            std::string thread_name_;
+            pthread_mutex_t lock_;            
             bool thread_exit_;
 
-            Stopwatch watch_;
-            std::string device_;
-            int speed_;
-            int fd_;
-
+            Framer framer_;
             OperationCallback func_;
-
-            // Send and receive buffers, _valid variables indicates that the corresponding buffers are not empty.
-            // Rx buffer, capacity = 1 command
-            Frame rx_command_;
-            bool  rx_command_valid_;
-
-            // Tx buffer, capacity = 1 command
-            Frame tx_command_;
-            bool  tx_command_valid_;
+            Stopwatch watch_;
 
             static 
             void* ThreadFn(void* obj);

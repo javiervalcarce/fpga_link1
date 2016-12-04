@@ -1,27 +1,23 @@
 // Hi Emacs, this is -*- mode: c++; tab-width: 6; indent-tabs-mode: nil; c-basic-offset: 6 -*-
 #include "fpga_link1_server.h"
-
+// platform
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
-
+// c++
 #include <cassert>
 #include <cstdio>
+#include <cstring>
+// app
 #include "codec.h"
 
 using fpga_link1::FpgaLink1Server;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1Server::FpgaLink1Server(std::string device, int speed_bps) {
-      device_ = device;
-      speed_ = speed_bps;
-      fd_ = -1;
-      thread_name_ = "fpga_link1";
+FpgaLink1Server::FpgaLink1Server(std::string device, int speed_bps) : framer_(device, speed_bps) {
       thread_exit_ = false;
       initialized_ = false;
-      tx_command_valid_ = false;
-      rx_command_valid_ = false;
       func_ = nullptr;
       
       pthread_attr_init(&thread_attr_);
@@ -33,44 +29,15 @@ FpgaLink1Server::FpgaLink1Server(std::string device, int speed_bps) {
 FpgaLink1Server::~FpgaLink1Server() {
       thread_exit_ = true;
       pthread_join(thread_, NULL);
-      // Terminate first the internal thread
-      if (fd_ != -1) {
-            close(fd_);
-      }
+      
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1Server::Error FpgaLink1Server::Init() {
       int r;
 
-      // http://stackoverflow.com/questions/26498582/
-      // opening-a-serial-port-on-os-x-hangs-forever-without-o-nonblock-flag
+      framer_.Init();
       
-      fd_ = open(device_.c_str(), O_RDWR | O_NOCTTY);
-      if (fd_ == -1) {
-            return Error::NoSuchDevice;
-      }
-
-      struct termios tio;     
-      r = tcgetattr(fd_, &tio);
-      if (r != 0) {
-            return Error::Termios;
-      }
-
-      cfmakeraw(&tio);
-
-      tio.c_cflag = CS8 | CREAD | CLOCAL;
-      tio.c_cc[VMIN] = 1;
-      tio.c_cc[VTIME] = 1;
-      
-      cfsetispeed(&tio, speed_); //B38400); //B115200);
-      cfsetospeed(&tio, speed_); //B38400); //B115200);
-      
-      r = tcsetattr(fd_, TCSANOW, &tio);
-      if (r != 0) {
-            return Error::Termios;
-      }
-
       r = pthread_create(&thread_, &thread_attr_, FpgaLink1Server::ThreadFn, this);
       if (r != 0) {
             return Error::ThreadCreation;
@@ -88,29 +55,17 @@ void* FpgaLink1Server::ThreadFn(void* obj) {
 }
 void* FpgaLink1Server::ThreadFn() {
 
-#ifdef __linux__
-      pthread_setname_np(thread_, thread_name_.c_str());
-#else
-      // Other POSIX
-      pthread_setname_np(thread_name_.c_str());
-#endif
-      int n;
-      int i;
-      int c;
-      int a;
-      
-      uint8_t tmp[1];
-      Frame rx_cmd;
-      Frame tx_cmd;      
-      SerializedFrame rx_ser;
-      SerializedFrame tx_ser;
-      uint32_t idle_frame_count = 0;
-      
       watch_.Reset();
       watch_.Start();
-      c = 0;
+     
+      Frame           reqf;  // Request frame
+      SerializedFrame reqs;  // Request frane serialized
+      Frame           resf;  // Response frame
+      SerializedFrame ress;  // Response frame serialized
 
-      Codec detector;
+      Framer::FixedFrame tx;
+      Framer::FixedFrame rx;
+      Framer::Error e;
       
       while (1) {
 
@@ -118,46 +73,49 @@ void* FpgaLink1Server::ThreadFn() {
                   break;
             }
 
-                        
-            a = 0;      
-            do {
-                  n = read(fd_, tmp, 1);
-                  a += n;
+            e = framer_.RxQueueDequeue(&rx, 500);
+            if (e == Framer::Error::Timeout) {
+                  printf("RxQueue timeout\n");
+                  continue;
+            }
+            if (e != Framer::Error::No) {
+                  printf("RxQueue error\n");
+            }
 
-                  detector.Push(tmp[0]);
-                  
-            } while (detector.Found() == false);
 
-            // decode
-            detector.Front(&rx_cmd);
-            detector.Pop();
-
-            if (rx_cmd.type != kPing) {
+            memcpy(reqs.data, rx.data, 8);
+            Decoder(&reqf, reqs);
+            
+            if (reqf.type != kPing) {
                   if (func_ != nullptr) {
-                        func_(rx_cmd.type, rx_cmd.address, &rx_cmd.data32);
+                        func_(reqf.type, reqf.address, &reqf.data32);
                   }
             }
             
-            switch (rx_cmd.type) {
-            case kPing: tx_cmd.type = kPingAck; break;
-            case kRead32: tx_cmd.type = kRead32Ack; break;
-            case kWrite32: tx_cmd.type = kWrite32Ack; break;
+            switch (reqf.type) {
+            case kPing: resf.type = kPingAck; break;
+            case kRead32: resf.type = kRead32Ack; break;
+            case kWrite32: resf.type = kWrite32Ack; break;
             default:
                   // Comando desconocido.
                   continue;
                   break;
             }
-            tx_cmd.address = rx_cmd.address;
-            tx_cmd.data32  = rx_cmd.data32;
+            resf.address = reqf.address;
+            resf.data32  = reqf.data32;
                   
             // Frame Encoder
-            Encoder(tx_cmd, &tx_ser);
+            Encoder(resf, &ress);
+            memcpy(tx.data, ress.data, 8);
             
-            a = 0;
-            do {
-                  n = write(fd_, tx_ser.data + a, tx_ser.size - a);
-                  a += n;
-            } while (a < tx_ser.size);
+            e = framer_.TxQueueEnqueue(tx, 500);
+            if (e == Framer::Error::Timeout) {
+                  printf("TxQueue timeout\n");
+                  continue;
+            }
+            if (e != Framer::Error::No) {
+                  printf("TxQueue error\n");
+            }
             
             
       }  // while (1)
@@ -166,9 +124,9 @@ void* FpgaLink1Server::ThreadFn() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FpgaLink1Server::Error FpgaLink1Server::SendInterrupt(int irq) {
-      return Error::No;
-}
+//FpgaLink1Server::Error FpgaLink1Server::SendInterrupt(int irq) {
+//      return Error::No;
+//}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /**

@@ -24,78 +24,95 @@ using fpga_link1::FpgaLink1;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1* com = NULL;
 
-std::string param_port;
-int param_speed;
 
 //const std::string kSerialPort("/dev/ttyS0");  // With Flow Control
 const std::string kSerialPort("/dev/cu.usbserial-FTE5IS5D");   // Without Flow Control
 
 void ShowUsage();
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int Test1() {
-      FpgaLink1::Error e;
-      
-      com = new FpgaLink1(param_port, param_speed);
-      e = com->Init();
-      
-      if (e != FpgaLink1::kErrorNo) {
-            printf("Error initializing comunication driver (%d)\n", static_cast<int>(e));
-            return 1;
-      }
-
-      printf("Sending a command frame over serial port %s\n", kSerialPort.c_str());
-      assert(com->MemoryWR32(0x000a0b0c, 0x01020304) == 0);
-      return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int Test2() {
-      FpgaLink1::Error e;
-            
-      com = new FpgaLink1(param_port, param_speed);
-      e = com->Init();
-      
-      if (e != FpgaLink1::kErrorNo) {
-            printf("Error initializing comunication driver (%d)\n", static_cast<int>(e));
-            return 1;
-      }
-
-      while (1) {
-            usleep(10000);
-      }
-      
-      return 0;
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
+      
+      std::string port = kSerialPort;
+      int speed = 9600;
+      bool background = false;
+      int address;
+      int data;
 
-      
-      param_port = kSerialPort; //argv[1];
-      param_speed = 9600;
-      
-      /*
+      // Process comand line options
+      static struct option long_options[] = {
+            { "background",    no_argument,       0, 'b' },
+            { "port",          required_argument, 0, 'p' },
+            { "speed",         required_argument, 0, 's' },
+            { 0, 0, 0, 0 }
+      };
+
       char* endp;
-      param_speed = strtoul(argv[2], &endp, 10);
-      if (*endp != '\0') {
-            printf("Error reading serial port speed\n");
-            return 1;
-      }
-      */
+      int option_index = 0;
+      int c;
       
-      bool read;
-
-      if (argc < 2) {
-            ShowUsage();
-            return 0;
-      } else if (argc == 2) {
-            read = true;
-      } else {
-            read = false;
+      if (argc == 1) {
+            printf("%s [--background] [--port] [--speed] [ADDRESS] [DATA]\n", argv[0]);
+            exit(0);
       }
 
-      com = new FpgaLink1(param_port, param_speed);
+      while (1) {
+
+            c = getopt_long (argc, argv, "bp:s:", long_options, &option_index);
+            if (c == -1) {
+                  break;
+            }
+	    
+            switch (c) {
+            case 0:
+                  // If this option set a flag, do nothing else now
+                  if (long_options[option_index].flag != 0) {
+                        break;
+                  }
+
+                  printf ("option %s", long_options[option_index].name);
+                  if (optarg) {
+                        printf (" with arg %s", optarg);
+                  }
+
+                  printf ("\n");
+                  break;
+                  
+            case 'p':
+                  port = optarg;
+                  break;
+
+            case 's':
+                  speed = strtoul(optarg, &endp, 0);
+                  if (*endp != '\0') {
+                        printf("Error reading serial port speed\n");
+                        return 1;
+                  }
+                  break;
+
+            case 'b':
+                  background = true;
+                  break;
+
+            default:
+                  return 1;
+            }
+      }
+
+      /* Print any remaining command line arguments (not options). */
+      if (optind < argc) {
+            printf ("non-option ARGV-elements: ");
+            while (optind < argc) {
+                  printf ("%s ", argv[optind++]);
+            }
+            putchar ('\n');
+      }
+
+      
+      bool read = false;
+
+      com = new FpgaLink1(port, speed);
       if (com->Init() != 0) {
             printf("Error initializing comunication driver\n");
             return 1;
@@ -133,6 +150,12 @@ int main(int argc, char* argv[]) {
             }
             printf("ok\n");
       }
+
+      if (background) {
+            while (1) {
+                  sleep(1);
+            }
+      }
       
       return 0;
 }
@@ -142,20 +165,15 @@ int main(int argc, char* argv[]) {
 void ShowUsage() {
       printf("\n");
       printf("Usage:\n");
-      printf("test_fpgalink1 [--help] [--port]] <register> [values]\n");
+      printf("fpgalink1_cli [--port] [--speed] ADDRESS DATA\n");
       printf("\n");
-      printf("    <register>            Number of the FPGA register to read from or to write to\n");
-      printf("    [values]              Value or values that will be written separated by space characters");
-      printf("\n");
-      printf("    --port=<tty-device>   Serial port connected to FPGA (default: /dev/ttyS0)\n");
-      printf("    --help                Show this help\n");
       printf("\n");
       printf("EXAMPLES:\n");
       printf("\n");
-      printf("    test_fpgalink1 0x1c 0x0a 0x0b\n");
-      printf("    (writes in regiser 0x1c the value 0x0a and in register 0x1d the value 0x0b)\n");
+      printf("    fpgalink1_cli 0x000234 0x00aabbf1\n");
+      printf("    (writes in the 32-bit register at address 0x000234 the value 0x00aabbf1)\n");
       printf("\n");
-      printf("    test_fpgalink1 0x1a\n");
+      printf("    fpgalink1_cli 0x1a\n");
       printf("    (read the value of regiser 0x1a)\n");
       printf("\n");
 }

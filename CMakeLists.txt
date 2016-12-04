@@ -22,9 +22,8 @@ set (FPGALINK1_VERSION_STRING ${FPGALINK1_VERSION_MAJOR}.${FPGALINK1_VERSION_MIN
 set (fpgalink1_SRCS src/fpga_link1.cpp src/fpga_link1_server.cpp src/codec.cpp src/stopwatch.cpp src/crc.cpp)
 
 # Programas
-set (fpgalink1_cli_SRCS src/main_cli.cpp)
-set (fpgalink1_srv_SRCS src/main_srv.cpp)
-
+set (fpgalink1_cli_SRCS src/main_cli.cpp src/framer.cpp)
+set (fpgalink1_srv_SRCS src/main_srv.cpp src/framer.cpp)
 
 set (CMAKE_VERBOSE_MAKEFILE on)
 
