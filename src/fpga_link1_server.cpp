@@ -36,7 +36,7 @@ FpgaLink1Server::~FpgaLink1Server() {
 FpgaLink1Server::Error FpgaLink1Server::Init() {
       int r;
 
-      framer_.Init();
+      assert(framer_.Init() == Framer::Error::No);
       
       r = pthread_create(&thread_, &thread_attr_, FpgaLink1Server::ThreadFn, this);
       if (r != 0) {
@@ -58,11 +58,8 @@ void* FpgaLink1Server::ThreadFn() {
       watch_.Reset();
       watch_.Start();
      
-      Frame           reqf;  // Request frame
-      SerializedFrame reqs;  // Request frane serialized
-      Frame           resf;  // Response frame
-      SerializedFrame ress;  // Response frame serialized
-
+      Frame      reqf;  // Request frame
+      Frame      resf;  // Response frame
       Framer::FixedFrame tx;
       Framer::FixedFrame rx;
       Framer::Error e;
@@ -81,21 +78,19 @@ void* FpgaLink1Server::ThreadFn() {
             if (e != Framer::Error::No) {
                   printf("RxQueue error\n");
             }
-
-
-            memcpy(reqs.data, rx.data, 8);
-            Decoder(&reqf, reqs);
             
-            if (reqf.type != kPing) {
+            Decoder(&reqf, rx);
+            
+            if (reqf.type != FrameType::Ping) {
                   if (func_ != nullptr) {
                         func_(reqf.type, reqf.address, &reqf.data32);
                   }
             }
             
             switch (reqf.type) {
-            case kPing: resf.type = kPingAck; break;
-            case kRead32: resf.type = kRead32Ack; break;
-            case kWrite32: resf.type = kWrite32Ack; break;
+            case FrameType::Ping    : resf.type = FrameType::PingAck;    break;
+            case FrameType::Read32  : resf.type = FrameType::Read32Ack;  break;
+            case FrameType::Write32 : resf.type = FrameType::Write32Ack; break;
             default:
                   // Comando desconocido.
                   continue;
@@ -103,11 +98,10 @@ void* FpgaLink1Server::ThreadFn() {
             }
             resf.address = reqf.address;
             resf.data32  = reqf.data32;
-                  
-            // Frame Encoder
-            Encoder(resf, &ress);
-            memcpy(tx.data, ress.data, 8);
             
+            // Frame Encoder
+            Encoder(resf, &tx);
+                        
             e = framer_.TxQueueEnqueue(tx, 500);
             if (e == Framer::Error::Timeout) {
                   printf("TxQueue timeout\n");

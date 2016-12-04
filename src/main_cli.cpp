@@ -113,11 +113,11 @@ int main(int argc, char* argv[]) {
       bool read = false;
 
       com = new FpgaLink1(port, speed);
-      if (com->Init() != 0) {
+      if (com->Init() != FpgaLink1::Error::No) {
             printf("Error initializing comunication driver\n");
             return 1;
       }
-
+      /*
       FpgaLink1::Error e;
       int reg;
       int val;
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
 
             printf("Reading from %d\n", reg);
             e = com->MemoryRD32(reg, &ui32);
-            if (e != FpgaLink1::kErrorNo) {
+            if (e != FpgaLink1::Error::No) {
                   printf("error\n");
                   return 1;
             }
@@ -144,13 +144,15 @@ int main(int argc, char* argv[]) {
             printf("Writing %d at %d\n", val, reg);
             
             e = com->MemoryWR32(reg,  ui32);
-            if (e != FpgaLink1::kErrorNo) {
+            if (e != FpgaLink1::Error::No) {
                   printf("error\n");
                   return 1;                  
             }
             printf("ok\n");
       }
+      */
 
+      
       if (background) {
             while (1) {
                   sleep(1);

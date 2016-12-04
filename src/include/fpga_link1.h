@@ -8,6 +8,7 @@
 
 #include "stopwatch.h"
 #include "codec.h"
+#include "framer.h"
 
 
 namespace fpga_link1 {
@@ -31,34 +32,34 @@ namespace fpga_link1 {
       class FpgaLink1 {
       public:
             
-            enum Error {
+            enum class Error {
                   // No error.
-                  kErrorNo,
+                  No,
                  
                   // The specified device does not exist.
-                  kErrorNoSuchDevice,
+                  NoSuchDevice,
 
                   // Error while creating a the internal thread (with pthread_create).
-                  kErrorThreadCreation,
+                  ThreadCreation,
                   
                   // Error during calling tcgetattr(), settcaatr() and other <termios.h> apis
-                  kErrorTermios,
+                  Termios,
 
                   // One or more parameters are wrong, for example: a data buffer pointer is null or data buffer size is
                   // too large (outside the permited range).
-                  kErrorWrongParameters,
+                  WrongParameters,
 
                   // Device has informed that the requested read or write operation was unsuccesful (nack)
-                  kErrorOperationNotAcknowledged,
+                  OperationNotAcknowledged,
                   
                   // Input/output error, for example: during read(), write(), poll(), etc, operations. Comunications.
-                  kErrorIO,
+                  IO,
 
                   // Protocol error, device has sent an unexpected frame which does not correspond with the sent one.
-                  kErrorProtocol,
+                  Protocol,
 
                   // Other, not specified, error.
-                  kErrorGeneric
+                  Generic
             };
 
 
@@ -90,21 +91,18 @@ namespace fpga_link1 {
 
             static const int kResponsePollPeriod = 2000;       // us, 2000 us = 2 ms
             static const int kIdleSleep = 1000;                // us, 1000 us = 1 ms
-            static const int kIdleLinkPeriod = 200;            // ms
+            static const int kIdleLinkPeriod = 1000;           // ms
             
             bool initialized_;
             pthread_t thread_;
             pthread_attr_t thread_attr_;
-            
             pthread_mutex_t lock_;
             std::string thread_name_;
             bool thread_exit_;
 
+            Framer framer_;
+            
             Stopwatch watch_;
-            std::string device_;
-            int speed_;
-            int fd_;
-
             InterruptCallback func_;
 
             // Send and receive buffers, _valid variables indicates that the corresponding buffers are not empty.

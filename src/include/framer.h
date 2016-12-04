@@ -7,7 +7,6 @@
 #include <string>
 
 #include "stopwatch.h"
-#include "codec.h"
 #include "pollable_sync_queue.h"
 
 namespace fpga_link1 {
@@ -110,7 +109,6 @@ namespace fpga_link1 {
             
             PollableSyncQueue<FixedFrame> tx_queue_;
             PollableSyncQueue<FixedFrame> rx_queue_;
-            
                         
             bool initialized_;
             std::string device_;
@@ -138,6 +136,9 @@ namespace fpga_link1 {
             uint8_t Crc8(uint8_t crc, uint8_t *data, int len);
             
       };
+
+
+      
 
 }
 

@@ -3,9 +3,11 @@
 #define FPGA_LINK1_POLLABLE_SYNC_QUEUE_H_
 
 #include <unistd.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <queue>
 #include <cassert>
+
 
 namespace fpga_link1 {
 
@@ -103,7 +105,24 @@ template<class T> PollableSyncQueue<T>::PollableSyncQueue(int capacity)
 
       m_queue = new std::queue<T>();
 
-      assert(pipe(m_fd) == 0);      
+      assert(pipe(m_fd) == 0);
+
+      
+      int flags;
+      
+      flags = fcntl(m_fd[0], F_GETFL, 0);
+      assert (flags >= 0);
+      flags |= O_NONBLOCK;
+      assert(fcntl(m_fd[0], F_SETFL, flags) != -1);
+
+      flags = fcntl(m_fd[1], F_GETFL, 0);
+      assert (flags >= 0);
+      flags |= O_NONBLOCK;
+      assert(fcntl(m_fd[1], F_SETFL, flags) != -1);
+      
+      char c;      
+      assert(read(m_fd[0], &c, 1) == -1);
+      
 }
 
 
@@ -136,7 +155,8 @@ template<class T> int PollableSyncQueue<T>::Push(const T& val)
 	    pthread_cond_wait(&m_cond_space, &m_lock); 
       }
 
-      char c;      
+      char c = 0xa5;
+      //printf("PollableSyncQueue<T>::Push!! write\n");
       assert(write(m_fd[1], &c, 1) == 1);
       
       m_queue->push(val);  	
