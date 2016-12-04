@@ -124,18 +124,43 @@ FpgaLink1::Error FpgaLink1::MemoryWR32(uint32_t address, uint32_t data, int time
       Framer::FixedFrame rx_ser;
       Framer::Error e;
 
+      struct pollfd fda[1];
+      int n;
+
+      
       assert((address & 0xff000000) == 0);
             
       tx_cmd.type    = FrameType::Write32;
       tx_cmd.address = address & 0x00FFFFFF;  // 24-bit address space
       tx_cmd.data32  = data;
 
+      //----------------------------------------------------------------------------------------------------------------      
+      fda[0].fd = framer_.TxQueueFileDescriptor();
+      fda[0].events = POLLOUT;
+      
+      n = poll(fda, 1, timeout_ms);
+      if (n == 0) {
+            return Error::Timeout;
+      }
+      
+      assert((fda[0].revents & POLLOUT) == POLLOUT);
+      
       printf("a=%x, d=%x\n", address, data);
       
       Encoder(tx_cmd, &tx_ser);
       e = framer_.TxQueueEnqueue(tx_ser,  500);
       //watch_.Reset();      
 
+      //----------------------------------------------------------------------------------------------------------------
+      fda[0].fd = framer_.RxQueueFileDescriptor();
+      fda[0].events = POLLIN;
+      
+      n = poll(fda, 1, timeout_ms);
+      if (n == 0) {
+            return Error::Timeout;
+      }
+      
+      assert((fda[0].revents & POLLIN) == POLLIN);
       
       e = framer_.RxQueueDequeue(&rx_ser, 500);
       Decoder(&rx_cmd, rx_ser);

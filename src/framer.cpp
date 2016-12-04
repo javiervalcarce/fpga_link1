@@ -189,7 +189,7 @@ void* Framer::ThreadFn() {
 
             //printf("poll()\n");
             
-            n = poll(fda, 3, 2000);
+            n = poll(fda, 3, 1000);
             if (n < 0) {
                   printf("poll ERROR\n");
             } else if (n == 0) {
@@ -233,6 +233,8 @@ void* Framer::ThreadFn() {
                         Framer::Encoder(txf_, &txs_);
                         txs_sent_ = 0;
 
+                        
+                              
                         fda[TX].events &= ~POLLIN;
                         fda[SP].events |= POLLOUT;
                   }

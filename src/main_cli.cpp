@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
       if (read) {
             e = com->MemoryRD32(address, &data, 500);
             if (e != FpgaLink1::Error::No) {
-                  printf("read error\n");
+                  printf("read error (%d)\n", (int) e);
                   return 1;
             }
 
@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
       } else {
             e = com->MemoryWR32(address, data, 500);
             if (e != FpgaLink1::Error::No) {
-                  printf("write error\n");
+                  printf("write error (%d)\n", (int) e);
                   return 1;                  
             }
 
