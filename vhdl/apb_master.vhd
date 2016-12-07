@@ -1,20 +1,20 @@
 LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.STD_LOGIC_ARITH.ALL;
-USE IEEE.STD_LOGIC_UNSIGNED.ALL;
+USE IEEE.numeric_std.ALL;
+
 
 entity apb_master is
    PORT( 
       clk      : in     std_logic;
       reset_n  : in     std_logic;
       -- rx frame
-      frame_dec_data  : in  std_logic_vector(61 downto 00);
-      frame_dec_valid : in  std_logic;
-      frame_dec_ready : out std_logic;  
+      rx_frame_data  : in  std_logic_vector(61 downto 00);
+      rx_frame_valid : in  std_logic;
+      rx_frame_ready : out std_logic;  
       -- tx frame
-      frame_enc_data  : out std_logic_vector(61 downto 00);
-      frame_enc_valid : out std_logic;
-      frame_enc_ready : in  std_logic;   
+      tx_frame_data  : out std_logic_vector(61 downto 00);
+      tx_frame_valid : out std_logic;
+      tx_frame_ready : in  std_logic;   
       -- APB Slaves 
       psel         : out    std_logic;
       pwrite       : out    std_logic;
@@ -33,7 +33,7 @@ end apb_master ;
 architecture rtl of apb_master is
       
   --APB internals 
-  signal rx_code        : unsigned(05 downto 00); -- 6 bits
+  signal opcode        : unsigned(05 downto 00); -- 6 bits
   signal paddr_int      : std_logic_vector(23 downto 00); 
  
   constant CODE_IDLE         : natural := 1;
@@ -49,17 +49,17 @@ architecture rtl of apb_master is
 begin
   paddr <= paddr_int;
   
-  -- rx frame: address (24 bits) and data (32 bits) buses
-  rx_code     <= unsigned(frame_dec_data(61 downto 56));
-  paddr_int   <= frame_dec_data(55 downto 32);
-  pwdata      <= frame_dec_data(31 downto 00);
+  -- received frame: opcode (6 bits), address (24 bits) and data (32 bits)
+  opcode     <= unsigned(rx_frame_data(61 downto 56));
+  paddr_int   <= rx_frame_data(55 downto 32);
+  pwdata      <= rx_frame_data(31 downto 00);
   
   -- tx frame:
   -- read data from apb slave (32 bits).
-  frame_enc_data(61 downto 56) <= B"000100";
-  frame_enc_data(55 downto 32) <= paddr_int;
-  frame_enc_data(31 downto 00) <= prdata;
-  frame_enc_valid <= '0'; --todo
+  tx_frame_data(61 downto 56) <= B"000100";
+  tx_frame_data(55 downto 32) <= paddr_int;
+  tx_frame_data(31 downto 00) <= prdata;
+  tx_frame_valid <= '0'; --todo
 
  CTL : block
    type   state_type is (IDLE, RD0, RD1, WR0, WR1, RDY);
@@ -76,10 +76,10 @@ begin
      elsif rising_edge(clk) then
        case (state) is
          when IDLE => 
-          if frame_dec_valid = '1' then 
-            --if rx_code = CODE_READ32 then
+          if rx_frame_valid = '1' then 
+            --if opcode = CODE_READ32 then
               --state <= RD0;
-            --elsif rx_code = CODE_WRITE32 then
+            --elsif opcode = CODE_WRITE32 then
               state <= WR0; 
             --end if;
           end if;
@@ -106,12 +106,12 @@ begin
    process (state)
    begin
      case state is
-       when IDLE => psel <= '0'; penable <= '0'; pwrite <= '0'; frame_dec_ready <= '0';
-       when RD0  => psel <= '1'; penable <= '0'; pwrite <= '0'; frame_dec_ready <= '0';
-       when RD1  => psel <= '1'; penable <= '1'; pwrite <= '0'; frame_dec_ready <= '0';
-       when WR0  => psel <= '1'; penable <= '0'; pwrite <= '1'; frame_dec_ready <= '0';
-       when WR1  => psel <= '1'; penable <= '1'; pwrite <= '1'; frame_dec_ready <= '0';
-       when RDY  => psel <= '0'; penable <= '0'; pwrite <= '0'; frame_dec_ready <= '1';
+       when IDLE => psel <= '0'; penable <= '0'; pwrite <= '0'; rx_frame_ready <= '0';
+       when RD0  => psel <= '1'; penable <= '0'; pwrite <= '0'; rx_frame_ready <= '0';
+       when RD1  => psel <= '1'; penable <= '1'; pwrite <= '0'; rx_frame_ready <= '0';
+       when WR0  => psel <= '1'; penable <= '0'; pwrite <= '1'; rx_frame_ready <= '0';
+       when WR1  => psel <= '1'; penable <= '1'; pwrite <= '1'; rx_frame_ready <= '0';
+       when RDY  => psel <= '0'; penable <= '0'; pwrite <= '0'; rx_frame_ready <= '1';
      end case;
    end process;
 

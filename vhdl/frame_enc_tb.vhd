@@ -1,7 +1,7 @@
 -- Hi Emacs, this is -*- mode: vhdl; vhdl-basic-offset: 6 -*-
 ------------------------------------------------------------------------------------------------------------------------
 --
--- Byte Stream Serialized N-bit Frame Decoder
+-- Test Bench for frame_enc.
 --
 -- 
 --
@@ -24,8 +24,8 @@
 ------------------------------------------------------------------------------------------------------------------------
 
 library IEEE;
-USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.numeric_std.all;
+use IEEE.std_logic_1164.all;
+use IEEE.numeric_std.all;
 
 ------------------------------------------------------------------------------------------------------------------------
 entity frame_enc_tb is
@@ -36,31 +36,21 @@ architecture sim of frame_enc_tb is
 
       constant SYSTEM_TCLK : time := 0020.0 ns;  -- @50MHz
 
-      shared variable END_SIMULATION : boolean := false;
+      signal END_SIMULATION : boolean := false;
 
       signal reset_n     : std_logic;
       signal clk         : std_logic;
-      signal data        : std_logic_vector(7 downto 0);
-      signal data_valid  : std_logic;
-      signal data_ready  : std_logic;
-      signal frame       : std_logic_vector(69 downto 0);
+      signal octet_data  : std_logic_vector(07 downto 00);
+      signal octet_valid : std_logic;
+      signal octet_ready : std_logic;
+      signal frame_data  : std_logic_vector(61 downto 00);
       signal frame_valid : std_logic;
       signal frame_ready : std_logic;
 
       --attribute INIT : string; 
       --attribute INIT of mux1_lut      : label is "E4FF";
 
-      component frame_enc is
-            port (
-                  reset_n     : in  std_logic;
-                  clk         : in  std_logic;
-                  data        : out std_logic_vector(7 downto 0);
-                  data_valid  : out std_logic;
-                  data_ready  : in  std_logic;
-                  frame       : in  std_logic_vector(69 downto 0);
-                  frame_valid : in  std_logic;
-                  frame_ready : out std_logic);
-      end component;
+
 
 begin
 
@@ -82,11 +72,11 @@ begin
 
       p_input : process
       begin
-
-            data_valid  <= '0';
-            data        <= X"00";
-            frame_ready <= '1';
-
+            
+            frame_data <= "111110" & X"aa_bb_cc_dd_11_22_33";
+            frame_valid <= '1';
+            octet_ready <= '1';
+            
             wait until rising_edge(reset_n);
 
             -- give some time more to process the last byte
@@ -94,19 +84,23 @@ begin
             wait until rising_edge(clk);
             wait until rising_edge(clk);
             wait until rising_edge(clk);
-            wait until rising_edge(clk);
-            wait until rising_edge(clk);
+            
 
-            END_SIMULATION := true;
+            wait until frame_ready = '1';
+
+            END_SIMULATION <= true;
       end process;
 
-      uut : frame_enc port map (
+      -- entity instantiation (VHDL'93)
+      uut : entity work.frame_enc port map (
             reset_n     => reset_n,
             clk         => clk,
-            data        => data,
-            data_valid  => data_valid,
-            data_ready  => data_ready,
-            frame       => frame,
+            --
+            octet_data  => octet_data,
+            octet_valid => octet_valid,
+            octet_ready => octet_ready,
+            --
+            frame_data  => frame_data,
             frame_valid => frame_valid,
             frame_ready => frame_ready
             );

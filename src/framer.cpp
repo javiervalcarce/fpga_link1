@@ -6,6 +6,7 @@
 #include <termios.h>
 #include <signal.h>
 #include <poll.h>
+#include <signal.h>
 
 // c++
 #include <cassert>
@@ -149,10 +150,10 @@ void* Framer::ThreadFn() {
      
       // Mask all signals for this thread.
       sigset_t set;
-      sigemptyset(&set);
+      //sigemptyset(&set);
       //sigaddset(&set, SIGPIPE);
-      sigfillset(&set);
-      pthread_sigmask(SIG_SETMASK, &set, NULL);
+      //sigfillset(&set);
+      //pthread_sigmask(SIG_SETMASK, &set, NULL);
 
 
       struct pollfd fda[3];
