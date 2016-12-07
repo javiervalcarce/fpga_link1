@@ -75,8 +75,8 @@ begin
   begin
 
     rx_data(61 downto 56) <= std_logic_vector(to_unsigned(0, 6));
-    rx_data(55 downto 32) <= X"00_00_00";
-    rx_data(31 downto 00) <= X"00_00_00_00";
+    rx_data(55 downto 32) <= X"AA_BB_CC";
+    rx_data(31 downto 00) <= X"11_22_33_44";
 
     rx_valid <= '0';
 

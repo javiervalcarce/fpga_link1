@@ -150,11 +150,11 @@ void* Framer::ThreadFn() {
      
       // Mask all signals for this thread.
       sigset_t set;
-      //sigemptyset(&set);
+      
       //sigaddset(&set, SIGPIPE);
       //sigfillset(&set);
       //pthread_sigmask(SIG_SETMASK, &set, NULL);
-
+      
 
       struct pollfd fda[3];
       int n;
