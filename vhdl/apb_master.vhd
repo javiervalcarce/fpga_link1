@@ -32,21 +32,19 @@ end apb_master;
 
 architecture rtl of apb_master is
 
-  
   type state_type is (IDLE, SEL, RD0, RD1, RD_RES0, RD_RES1, WR0, WR1, WR_RES0, WR_RES1);
   signal state : state_type;
-  signal op    : std_logic_vector(6 downto 0);
-  
+
   --APB internals 
-  signal opcode    : unsigned(05 downto 00);  -- 6 bits
-  signal paddr_int : std_logic_vector(23 downto 00);
+  signal opcode             : natural range 0 to 15;  -- 6 bits
+  signal paddr_int          : std_logic_vector(23 downto 00);
   signal rx_frame_ready_int : std_logic;
-  signal ireg      : std_logic_vector(61 downto 00);
-  signal oreg      : std_logic_vector(61 downto 00);
-  signal ireg_wr   : std_logic;
-  signal oreg_wr   : std_logic;
+  signal ireg               : std_logic_vector(61 downto 00);
+  signal oreg               : std_logic_vector(61 downto 00);
+  signal ireg_wr            : std_logic;
+  signal oreg_wr            : std_logic;
 
-
+  signal res_wr : std_logic;
 
   constant CODE_PING         : natural := 1;
   constant CODE_READ32       : natural := 2;
@@ -61,7 +59,8 @@ architecture rtl of apb_master is
 begin
 
   -- dummy signals
-  paddr <= paddr_int;
+  paddr          <= paddr_int;
+  rx_frame_ready <= rx_frame_ready_int;
 
   ----------------------------------------------------------------------------------------------------------------------
   -- fsm start!
@@ -79,7 +78,7 @@ begin
   end process p_ireg;
 
   -- received frame: opcode (6 bits), address (24 bits) and data (32 bits)
-  opcode    <= unsigned(ireg(61 downto 56));
+  opcode    <= to_integer(unsigned(ireg(61 downto 56)));
   paddr_int <= ireg(55 downto 32);
   pwdata    <= ireg(31 downto 00);
 
@@ -87,7 +86,10 @@ begin
 
   -- tx frame:
   -- read data from apb slave (32 bits). TODO
-  oreg(61 downto 56) <= std_logic_vector(to_unsigned(CODE_WRITE32_ACK, 6));
+  oreg(61 downto 56) <= std_logic_vector(to_unsigned(CODE_READ32_ACK, 6)) when res_wr = '0' else
+                        std_logic_vector(to_unsigned(CODE_WRITE32_ACK, 6));
+
+
   oreg(55 downto 32) <= paddr_int;
   oreg(31 downto 00) <= prdata;
 
@@ -104,7 +106,7 @@ begin
 
   ----------------------------------------------------------------------------------------------------------------------
 
-  
+
   -- Graph transitions
   process (reset_n, clk)
   begin
@@ -118,16 +120,19 @@ begin
             state <= SEL;
           end if;
         when SEL =>
-          --if opcode = CODE_READ32 then
-          --state <= RD0;
-          --elsif opcode = CODE_WRITE32 then
-          state <= WR0;
-        --end if;
+          -- TODO: Errors in APB transacctions
+          if opcode = CODE_READ32 then
+            state <= RD0;
+          elsif opcode = CODE_WRITE32 then
+            state <= WR0;
+          end if;
+
+        -- APB READ
         when RD0 =>
           state <= RD1;
         when RD1 =>
           if pready = '1' then
-            state <= IDLE;
+            state <= RD_RES0;
           end if;
         when RD_RES0 =>
           state <= RD_RES1;
@@ -135,7 +140,8 @@ begin
           if tx_frame_ready = '1' then
             state <= IDLE;
           end if;
-          
+
+        -- APB WRITE
         when WR0 =>
           state <= WR1;
         when WR1 =>
@@ -149,7 +155,7 @@ begin
             state <= IDLE;
           end if;
 
-          -- TODO
+      -- TODO
       end case;
     end if;
   end process;
@@ -158,25 +164,25 @@ begin
   -- control signals for data path
   process (state)
   begin
-    oreg_wr <= '0';
+    oreg_wr            <= '0';
     rx_frame_ready_int <= '0';
-    tx_frame_valid <= '0';
-    psel <= '0';
-    penable <= '0';
-    pwrite <= '0';
-    
+    tx_frame_valid     <= '0';
+    psel               <= '0';
+    penable            <= '0';
+    pwrite             <= '0';
+    res_wr             <= '0';
     case state is
       when IDLE => psel <= '0'; penable <= '0'; pwrite <= '0'; rx_frame_ready_int <= '1';
       when SEL  => psel <= '0'; penable <= '0'; pwrite <= '0'; rx_frame_ready_int <= '0';
-                   
-      when RD0  => psel <= '1'; penable <= '0'; pwrite <= '0'; rx_frame_ready_int <= '0';
-      when RD1  => psel <= '1'; penable <= '1'; pwrite <= '0'; rx_frame_ready_int <= '0';
-      when RD_RES0 => oreg_wr <= '1';  -- selopcde <= read
+
+      when RD0     => psel           <= '1'; penable <= '0'; pwrite <= '0'; rx_frame_ready_int <= '0';
+      when RD1     => psel           <= '1'; penable <= '1'; pwrite <= '0'; rx_frame_ready_int <= '0';
+      when RD_RES0 => oreg_wr        <= '1'; res_wr <= '0';
       when RD_RES1 => tx_frame_valid <= '1';
-                   
-      when WR0  => psel <= '1'; penable <= '0'; pwrite <= '1'; rx_frame_ready_int <= '0';
-      when WR1  => psel <= '1'; penable <= '1'; pwrite <= '1'; rx_frame_ready_int <= '0';
-      when WR_RES0 => oreg_wr <= '1'; -- selopcde <= write
+
+      when WR0     => psel           <= '1'; penable <= '0'; pwrite <= '1'; rx_frame_ready_int <= '0';
+      when WR1     => psel           <= '1'; penable <= '1'; pwrite <= '1'; rx_frame_ready_int <= '0';
+      when WR_RES0 => oreg_wr        <= '1'; res_wr <= '1';
       when WR_RES1 => tx_frame_valid <= '1';
 
     end case;

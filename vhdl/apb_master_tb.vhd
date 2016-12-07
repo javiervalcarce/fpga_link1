@@ -74,46 +74,55 @@ begin
   p_input : process
   begin
 
+    -- accept all frames sent to apb_master
+    tx_ready <= '1';
+
     rx_data(61 downto 56) <= std_logic_vector(to_unsigned(0, 6));
     rx_data(55 downto 32) <= X"AA_BB_CC";
     rx_data(31 downto 00) <= X"11_22_33_44";
-
-    rx_valid <= '0';
+    rx_valid              <= '0';
 
     wait until rising_edge(reset_n);
     wait until rising_edge(clk);
 
-    --assert (rx_ready = '1') report "rx_ready <> 1" severity error;
+    assert (rx_ready = '1') report "rx_ready <> 1" severity error;
     assert (tx_valid = '0') report "tx_valid <> 0" severity error;
 
     wait until rising_edge(clk);
+    wait until rising_edge(clk);
 
-    -- Primera trama decodificada (sin el CRC de 8 bits).
-    rx_valid              <= '1';
+    -- Órden de escritura en un registro de dirección 0x010203 el valor 0xaabbccdd
     rx_data(61 downto 56) <= std_logic_vector(to_unsigned(CODE_WRITE32, 6));
     rx_data(55 downto 32) <= X"01_02_03";
     rx_data(31 downto 00) <= X"aa_bb_cc_dd";
+    rx_valid              <= '1';
 
+    wait until rising_edge(clk);
+    wait until rising_edge(clk);
     wait until rising_edge(clk) and rx_ready = '1';
 
-
-    -- Primera trama decodificada (sin el CRC de 8 bits).
-    rx_valid              <= '1';
+    -- Órden de lectura de un registro de dirección 0x040506
     rx_data(61 downto 56) <= std_logic_vector(to_unsigned(CODE_READ32, 6));
     rx_data(55 downto 32) <= X"04_05_06";
     rx_data(31 downto 00) <= (others => '0');
+    rx_valid              <= '1';
 
+    wait until rising_edge(clk);
+    wait until rising_edge(clk);
     wait until rising_edge(clk) and rx_ready = '1';
 
 
-    END_SIMULATION <= false;
-
+    END_SIMULATION <= true;
 
   end process p_input;
 
+
+
+
+
   dut : entity work.apb_master port map (
-    clk             => clk,
-    reset_n         => reset_n,
+    clk            => clk,
+    reset_n        => reset_n,
     -- rx frame
     rx_frame_data  => rx_data,
     rx_frame_valid => rx_valid,
@@ -123,13 +132,13 @@ begin
     tx_frame_valid => tx_valid,
     tx_frame_ready => tx_ready,
     -- APB Slaves 
-    psel            => psel,
-    pwrite          => pwrite,
-    penable         => penable,
-    paddr           => paddr,
-    pwdata          => pwdata,
-    prdata          => prdata,
-    pready          => pready
+    psel           => psel,
+    pwrite         => pwrite,
+    penable        => penable,
+    paddr          => paddr,
+    pwdata         => pwdata,
+    prdata         => prdata,
+    pready         => pready
     );
 
 
@@ -141,6 +150,7 @@ begin
       pready      <= '0';
       prdata      <= (others => '0');
       slave_store <= (others => '0');
+
     elsif rising_edge(clk) then
 
       pready <= '0';
@@ -153,13 +163,11 @@ begin
           pready <= '1';
           c      := c + 1;
           if pwrite = '0' then
-            assert paddr = X"01_02_03";
-
+            --assert paddr = X"01_02_03";
             prdata <= std_logic_vector(to_unsigned(c, 32));  -- read
           else
-
-            assert paddr = X"01_02_03";
-            assert pwdata = X"aa_bb_cc_dd";
+            --assert paddr = X"01_02_03";
+            --assert pwdata = X"aa_bb_cc_dd";
             -- write operation
             slave_store <= pwdata;
           end if;
