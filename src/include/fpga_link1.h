@@ -86,6 +86,8 @@ namespace fpga_link1 {
             Error Init();
 
             Error RegisterInterruptCallback(InterruptCallback f);
+
+            Error Ping(int timeout_ms);
             
             Error MemoryRD32(uint32_t address, uint32_t* data, int timeout_ms);
             Error MemoryWR32(uint32_t address, uint32_t  data, int timeout_ms);

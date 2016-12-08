@@ -31,24 +31,25 @@ end apb_master;
 
 architecture rtl of apb_master is
 
-    type state_type is (IDLE, SEL, RD0, RD1, RD_RES0, RD_RES1, WR0, WR1, WR_RES0, WR_RES1);
+    type state_type is (IDLE, SEL, PING_RES0, PING_RES1, RD_REQ0, RD_REQ1, RD_RES0, RD_RES1, WR_REQ0, WR_REQ1, WR_RES0, WR_RES1);
     signal state : state_type;
 
     --APB internals 
-    signal opcode : natural range 0 to 15;  -- 6 bits
+    signal opcode_req : natural range 0 to 15;  -- 6 bits
+    signal opcode_res : natural range 0 to 15;  -- 6 bits
 
-    signal psel_int    : std_logic;
-    signal penable_int : std_logic;
-    signal paddr_int   : std_logic_vector(23 downto 00);
-    signal pwrite_int  : std_logic;
-    
+    signal psel_int           : std_logic;
+    signal penable_int        : std_logic;
+    signal paddr_int          : std_logic_vector(23 downto 00);
+    signal pwrite_int         : std_logic;
     signal rx_frame_ready_int : std_logic;
-    signal ireg               : std_logic_vector(61 downto 00);
-    signal oreg               : std_logic_vector(61 downto 00);
-    signal ireg_wr            : std_logic;
-    signal oreg_wr            : std_logic;
 
-    signal res_wr : std_logic;
+    signal ireg    : std_logic_vector(61 downto 00);
+    signal oreg    : std_logic_vector(61 downto 00);
+    signal ireg_wr : std_logic;
+    signal oreg_wr : std_logic;
+
+
 
     signal readdata : std_logic_vector(31 downto 00);
 
@@ -69,7 +70,7 @@ begin
     psel    <= psel_int;
     penable <= penable_int;
     pwrite  <= pwrite_int;
-    
+
     rx_frame_ready <= rx_frame_ready_int;
 
     ----------------------------------------------------------------------------------------------------------------------
@@ -88,20 +89,16 @@ begin
     end process p_ireg;
 
     -- received frame: opcode (6 bits), address (24 bits) and data (32 bits)
-    opcode    <= to_integer(unsigned(ireg(61 downto 56)));
-    paddr_int <= ireg(55 downto 32);
-    pwdata    <= ireg(31 downto 00);
+    opcode_req <= to_integer(unsigned(ireg(61 downto 56)));
+    paddr_int  <= ireg(55 downto 32);
+    pwdata     <= ireg(31 downto 00);
 
     ----------------------------------------------------------------------------------------------------------------------
 
     -- tx frame:
     -- read data from apb slave (32 bits). TODO
-    oreg(61 downto 56) <= std_logic_vector(to_unsigned(CODE_READ32_ACK, 6)) when res_wr = '0' else
-                          std_logic_vector(to_unsigned(CODE_WRITE32_ACK, 6));
-
-
+    oreg(61 downto 56) <= std_logic_vector(to_unsigned(opcode_res, 6));
     oreg(55 downto 32) <= paddr_int;
-
 
     -- registers data delivered by the apb peripheral at the end of the apb
     -- read transfer
@@ -146,16 +143,30 @@ begin
                     end if;
                 when SEL =>
                     -- TODO: Errors in APB transacctions
-                    if opcode = CODE_READ32 then
-                        state <= RD0;
-                    elsif opcode = CODE_WRITE32 then
-                        state <= WR0;
+                    if opcode_req = CODE_PING then
+                        state <= PING_RES0;
+                    elsif opcode_req = CODE_READ32 then
+                        state <= RD_REQ0;
+                    elsif opcode_req = CODE_WRITE32 then
+                        state <= WR_REQ0;
+                    else
+                        -- return to a known state, error recovery.
+                        state <= IDLE;
                     end if;
 
+                when PING_RES0 =>
+                    state <= PING_RES1;
+                when PING_RES1 =>
+                    if tx_frame_ready = '1' then
+                        state <= IDLE;
+                    end if;
+
+
+
                 -- APB READ
-                when RD0 =>
-                    state <= RD1;
-                when RD1 =>
+                when RD_REQ0 =>
+                    state <= RD_REQ1;
+                when RD_REQ1 =>
                     if pready = '1' then
                         state <= RD_RES0;
                     end if;
@@ -167,9 +178,9 @@ begin
                     end if;
 
                 -- APB WRITE
-                when WR0 =>
-                    state <= WR1;
-                when WR1 =>
+                when WR_REQ0 =>
+                    state <= WR_REQ1;
+                when WR_REQ1 =>
                     if pready = '1' then
                         state <= WR_RES0;
                     end if;
@@ -192,30 +203,30 @@ begin
         oreg_wr            <= '0';
         rx_frame_ready_int <= '0';
         tx_frame_valid     <= '0';
-        psel_int               <= '0';
-        penable_int            <= '0';
-        pwrite_int             <= '0';
-        res_wr             <= '0';
+        psel_int           <= '0';
+        penable_int        <= '0';
+        pwrite_int         <= '0';
+        
+        opcode_res         <= CODE_PING_ACK;
 
         case state is
             when IDLE => psel_int <= '0'; penable_int <= '0'; pwrite_int <= '0'; rx_frame_ready_int <= '1';
             when SEL  => psel_int <= '0'; penable_int <= '0'; pwrite_int <= '0'; rx_frame_ready_int <= '0';
 
-            when RD0     => psel_int           <= '1'; penable_int <= '0'; pwrite_int <= '0'; rx_frame_ready_int <= '0';
-            when RD1     => psel_int           <= '1'; penable_int <= '1'; pwrite_int <= '0'; rx_frame_ready_int <= '0';
-            when RD_RES0 => oreg_wr        <= '1'; res_wr <= '0';
+            when PING_RES0 => oreg_wr        <= '1'; opcode_res <= CODE_PING_ACK;
+            when PING_RES1 => tx_frame_valid <= '1';
+
+            when RD_REQ0 => psel_int       <= '1'; penable_int <= '0'; pwrite_int <= '0'; rx_frame_ready_int <= '0';
+            when RD_REQ1 => psel_int       <= '1'; penable_int <= '1'; pwrite_int <= '0'; rx_frame_ready_int <= '0';
+            when RD_RES0 => oreg_wr        <= '1'; opcode_res <= CODE_READ32_ACK;
             when RD_RES1 => tx_frame_valid <= '1';
 
-            when WR0     => psel_int           <= '1'; penable_int <= '0'; pwrite_int <= '1'; rx_frame_ready_int <= '0';
-            when WR1     => psel_int           <= '1'; penable_int <= '1'; pwrite_int <= '1'; rx_frame_ready_int <= '0';
-            when WR_RES0 => oreg_wr        <= '1'; res_wr <= '1';
+            when WR_REQ0 => psel_int       <= '1'; penable_int <= '0'; pwrite_int <= '1'; rx_frame_ready_int <= '0';
+            when WR_REQ1 => psel_int       <= '1'; penable_int <= '1'; pwrite_int <= '1'; rx_frame_ready_int <= '0';
+            when WR_RES0 => oreg_wr        <= '1'; opcode_res <= CODE_WRITE32_ACK;
             when WR_RES1 => tx_frame_valid <= '1';
 
         end case;
     end process;
-
-
-
-
 
 end rtl;

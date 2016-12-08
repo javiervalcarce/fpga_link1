@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
       int c;
       
       if (argc == 1) {
-            printf("%s [--background] [--port] [--speed] [ADDRESS] [DATA]\n", argv[0]);
+            printf("%s [--background] [--port] [--speed] [ADDRESS | ping] [DATA]\n", argv[0]);
             exit(0);
       }
 
@@ -120,8 +120,27 @@ int main(int argc, char* argv[]) {
             return 1;
       }
       
-            
 
+      FpgaLink1::Error e;
+      com = new FpgaLink1(port, speed);
+      if (com->Init() != FpgaLink1::Error::No) {
+            printf("Error initializing comunication driver\n");
+            return 1;
+      }
+
+      
+      if (str_address == "ping") {
+           e = com->Ping(500);
+            if (e != FpgaLink1::Error::No) {
+                  printf("error, link down\n");
+                  return 1;
+            }
+
+            printf("pong!\n");
+            return 0;
+      }
+      
+      
       address = strtoul(str_address.c_str(), &endp, 0);
       if (*endp != '\0') {
             printf("Error reading address\n");
@@ -133,15 +152,8 @@ int main(int argc, char* argv[]) {
             printf("Error reading data\n");
             return 1;
       }
-      
-      com = new FpgaLink1(port, speed);
-      if (com->Init() != FpgaLink1::Error::No) {
-            printf("Error initializing comunication driver\n");
-            return 1;
-      }
 
-      FpgaLink1::Error e;
-      
+
       if (read) {
             e = com->MemoryRD32(address, &data, 500);
             if (e != FpgaLink1::Error::No) {

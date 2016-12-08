@@ -57,6 +57,58 @@ FpgaLink1::Error FpgaLink1::RegisterInterruptCallback(InterruptCallback f) {
       return Error::No;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+FpgaLink1::Error FpgaLink1::Ping(int timeout_ms) {
+      assert(initialized_ == true);
+
+      Frame tx_cmd;
+      Frame rx_cmd;
+      Framer::FixedFrame tx_ser;
+      Framer::FixedFrame rx_ser;
+      Framer::Error e;
+
+      struct pollfd fda[1];
+      int n;
+      
+      tx_cmd.type    = FrameType::Ping;
+      tx_cmd.address = 0;
+      tx_cmd.data32  = 0;
+
+      //----------------------------------------------------------------------------------------------------------------          
+      fda[0].fd = framer_.TxQueueFileDescriptor();
+      fda[0].events = POLLOUT;
+      
+      n = poll(fda, 1, timeout_ms);
+      if (n == 0) {
+            return Error::Timeout;
+      }
+      
+      assert((fda[0].revents & POLLOUT) == POLLOUT);
+
+      Encoder(tx_cmd, &tx_ser);
+      e = framer_.TxQueueEnqueue(tx_ser,  500);
+
+      //----------------------------------------------------------------------------------------------------------------      
+
+      fda[0].fd = framer_.RxQueueFileDescriptor();
+      fda[0].events = POLLIN;
+      
+      n = poll(fda, 1, timeout_ms);
+      if (n == 0) {
+            return Error::Timeout;
+      }
+      
+      assert((fda[0].revents & POLLIN) == POLLIN);
+      
+      e = framer_.RxQueueDequeue(&rx_ser, 500);
+      Decoder(&rx_cmd, rx_ser);
+      
+      if (rx_cmd.type != FrameType::PingAck) {
+            return Error::OperationNotAcknowledged;
+      }
+
+      return Error::No;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FpgaLink1::Error FpgaLink1::MemoryRD32(uint32_t address, uint32_t* data, int timeout_ms) {

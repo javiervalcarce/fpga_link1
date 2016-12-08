@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Manual de la biblioteca librest</title>
+    <title>FpgaLink1</title>
     <meta charset="utf-8"> 
     <link rel="stylesheet" type="text/css" href="style.css">
     <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
@@ -10,10 +10,37 @@
     <h1>FPGA Link 1 (UART)</h1>
     
     <h2>Introduction</h2>
-    
-    <h2>Encoding Technique for Frame Delimiting Over Serial Port</h2>
     <p>
-      In this document is described a tecnique for frame delimiting, simple enoguth to be implemented easyly in VHDL.
+      This is the manual of FpgaLink1 data link between a UNIX machine and a microelectronic system implemented in a
+      FPGA or ASIC thru clasic serial port. The system has two parts:
+      <ul>
+	<li>SW</li>
+	<li>HW</li>
+      </ul>
+    </p>
+    
+    <h2>Frame Format</h2>
+
+    <pre>
+    	Each frame is composed of 9 bytes:
+
+	bit
+	69              64 63               40 39                              8 7                            0
+	+------------------------------------------------------------------------------------------------------+
+	| OPCODE (6 bits) | ADDRESS (24 bits) | DATA (32 bits)                  | CRC (8 bits)                 |
+	+------------------------------------------------------------------------------------------------------+
+
+	and that frame is encoded with 10 bytes, thus, there is a fixed
+	redundancy of 1 byte per frame. If transmited over a serial port with
+	1 start bit and 1 stop bit then en eficiency w.r.t the line speed if E
+	= 7/10 = 70%.
+    </pre>
+    
+    <h2>Encoding Technique for Frame Delimiting Over a Serial Channel</h2>
+    <p>
+      The frame delimiting problem consist basically in be able to separate each of the sent frames. The following
+      tecnique let us know where the Start of Frame (SOF) is and, hence, distinguish each frame in a continuosly sent
+      frame stream.
     </p>
     <p>
       The following technique is not known for its efficiency but has some important advantages: (a) has a consistent
@@ -27,13 +54,15 @@
 
     
     <table>
-      <caption>Frame Format. The first byte transmited is Byte 0</caption>
+      <caption>Frame Format</caption>
       <thead>
 	<tr><td>Byte 0</td><td>Byte 1</td><td>Byte 2</td><td>Byte 3</td><td>Byte 4</td><td>Byte 5</td><td>Byte 6</td><td>Byte 7</td><td>Byte 8</td><td>Byte 9</td><td>Byte 10</td><td>Byte 11</td><td>Byte 12</td><td>Byte 13</td></tr>
       </thead>
       <tbody>
 	<tr><td>Opcode</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>ADDRESS</td><td>DATA (MSB)</td><td>DATA</td><td>DATA</td><td>DATA (LSB)</td><td>CRC</td></tr>
       </tbody>
+
+
   </body>
 
   
