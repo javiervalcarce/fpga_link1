@@ -11,7 +11,8 @@
 // c++
 #include <cassert>
 #include <cstdio>
-
+#include <sstream>
+#include <iomanip>
 #include "codec.h"
 
 using fpga_link1::Framer;
@@ -19,11 +20,20 @@ using fpga_link1::Framer;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void PrintFrame(fpga_link1::Framer::FixedFrame f) {
+void PrintFrame(std::string prompt, fpga_link1::Framer::FixedFrame f) {
+      std::ostringstream os;
+
+      os << prompt;
+      
       for (int i = 0; i < 8; ++i) {
-            printf("%02X ", static_cast<unsigned char>(f.data[i]));
+            os << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(f.data[i]);
+            if (i < 7) {
+                  os << "-";
+            }
       }
-      printf("\n");
+      os << std::endl;
+
+      printf(os.str().c_str());
       
 }
 
@@ -228,8 +238,7 @@ void* Framer::ThreadFn() {
                         txf_ = tx_queue_.Front(); // blocking
                         tx_queue_.Pop();
 
-                        printf("Transmited: ");
-                        PrintFrame(txf_);
+                        PrintFrame("Tx frame: ", txf_);
                         
                         Framer::Encoder(txf_, &txs_);
                         txs_sent_ = 0;
@@ -280,8 +289,8 @@ void* Framer::ThreadFn() {
                               found_ = false;
                               rx_queue_.Push(rxf_);  // BLOCKING!?
 
-                              printf("Received frame: ");
-                              PrintFrame(rxf_);
+                              
+                              PrintFrame("Rx frame: ", rxf_);
                         }
                         
                         fda[RX].events &= ~POLLOUT;
@@ -386,11 +395,13 @@ int Framer::Decoder(FixedFrame* f, SerializedFixedFrame& s) {
       f->data[6] = tmp[6];
       f->data[7] = tmp[7];
 
+      /*
       // tmp[8] CRC      
       if (tmp[8] != Crc8(0xFF, tmp, 8)) {
             // Bad CRC.
             return 1;
       }
+      */
       
       return 0;
 }
@@ -398,6 +409,8 @@ int Framer::Decoder(FixedFrame* f, SerializedFixedFrame& s) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int Framer::Push(uint8_t c) {
       assert(initialized_ == true);
+
+      printf("RXC = 0x%02X\n", (int) c);
       
       if (found_) {
             return 1;

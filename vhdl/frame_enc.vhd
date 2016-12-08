@@ -112,7 +112,7 @@ begin
       end process;
 
       -- Multiplexer #1 (7-bits chanels)
-      p_mux7 : process(frame_ireg, mux1_sel)
+      p_mux7 : process(frame_wcrc, mux1_sel)
       begin
             case mux1_sel is
                   when 0      => mux1_data <= "1" & frame_wcrc(PACK0);

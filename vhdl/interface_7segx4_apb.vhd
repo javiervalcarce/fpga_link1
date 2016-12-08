@@ -53,7 +53,7 @@ begin
       prdata <= prdata_in when psel = '0' else prdata_int;
       pready <= pready_in when psel = '0' else pready_int;
 
-      address4byte <= unsigned(paddr(23 downto 02) & "00");
+      address4byte <= unsigned(paddr(23 downto 00));
 
       -- genarate pready_int signal
       -- IO WITHOUT WAIT STATES (assert ready with setup phase)
@@ -100,7 +100,6 @@ begin
                   when IOADDR_VALUE => prdata_int <= X"00_00" & std_logic_vector(r.value);
                   when others       => prdata_int <= X"CA_CA_CA_CA";
             end case;
-
       end process p_rd_ioregs;
 
 

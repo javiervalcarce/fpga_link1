@@ -178,9 +178,11 @@ begin
       enc : entity work.frame_enc port map (
             reset_n     => reset_n,
             clk         => clk,
+            -- in
             octet_data  => tx_data,
             octet_valid => tx_valid,
             octet_ready => tx_ready,
+            -- out
             frame_data  => frame_enc_data,
             frame_valid => frame_enc_valid,
             frame_ready => frame_enc_ready
@@ -190,11 +192,11 @@ begin
 
             clk            => clk,
             reset_n        => reset_n,
-            -- frame i/o
+            -- in
             rx_frame_data  => frame_dec_data,
             rx_frame_valid => frame_dec_valid,
             rx_frame_ready => frame_dec_ready,
-            --
+            -- out
             tx_frame_data  => frame_enc_data,
             tx_frame_valid => frame_enc_valid,
             tx_frame_ready => frame_enc_ready,
@@ -216,7 +218,7 @@ begin
             pwrite    => pwrite,
             paddr     => paddr,
             pwdata    => pwdata,
-            prdata_in => X"00_00_00_00",
+            prdata_in => X"BA_BB_BC_BD",
             pready_in => '1',
             prdata    => prdata,
             pready    => pready,

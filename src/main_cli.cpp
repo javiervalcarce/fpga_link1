@@ -134,8 +134,6 @@ int main(int argc, char* argv[]) {
             return 1;
       }
       
-      printf("a[0x%x] d[0x%x]\n", address, data);
-
       com = new FpgaLink1(port, speed);
       if (com->Init() != FpgaLink1::Error::No) {
             printf("Error initializing comunication driver\n");
@@ -151,6 +149,7 @@ int main(int argc, char* argv[]) {
                   return 1;
             }
 
+            printf("\n");
             printf("REG[%x] -> 0x%x\n", address, data);
       } else {
             e = com->MemoryWR32(address, data, 500);
@@ -159,6 +158,7 @@ int main(int argc, char* argv[]) {
                   return 1;                  
             }
 
+            printf("\n");
             printf("REG[%x] <- 0x%x\n", address, data);
             printf("ok\n");
       }
