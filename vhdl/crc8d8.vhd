@@ -88,7 +88,6 @@ begin
 
       p_oreg : process(clk)
       begin
-            if 
             if rising_edge(clk) then
                   if rs = '1' then
                         current <= (others => '0');

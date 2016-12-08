@@ -176,14 +176,12 @@ begin
       uut: entity work.frame_dec port map (
             reset_n     => reset_n,
             clk         => clk,
-            data        => data,
-            data_valid  => data_valid,
-            data_ready  => data_ready,
-            frame       => frame,
+            octet_data  => data,
+            octet_valid => data_valid,
+            octet_ready => data_ready,
+            frame_data  => frame,
             frame_valid => frame_valid,
             frame_ready => frame_ready
-      );
-
-      
+      );   
 
 end sim;

@@ -24,8 +24,8 @@
 ------------------------------------------------------------------------------------------------------------------------
 
 library IEEE;
-USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.numeric_std.all;
+use IEEE.STD_LOGIC_1164.all;
+use IEEE.numeric_std.all;
 
 ------------------------------------------------------------------------------------------------------------------------
 --
@@ -52,54 +52,54 @@ end top;
 architecture rtl of top is
 
       -- Puerto serie. Generación de pulsos en16
-      signal en16     : std_logic;
-      signal counter  : unsigned(15 downto 0);
-      
-      signal reset    : std_logic;        
+      signal en16    : std_logic;
+      signal counter : unsigned(15 downto 0);
+
+      signal reset    : std_logic;
       signal reset_n  : std_logic;
       signal clk_slow : std_logic;
 
       signal read_buffer  : std_logic;
       signal reset_buffer : std_logic;
-      
+
       -- Avalon-ST signals for serial port TX
-      signal tx_data  : std_logic_vector(7 downto 0); -- bytes que se envían                                                      -- tx
+      signal tx_data  : std_logic_vector(7 downto 0);  -- bytes que se envían                                                      -- tx
       signal tx_valid : std_logic;
       signal tx_ready : std_logic;
       signal tx_full  : std_logic;
-      
+
       -- Avalon-ST signals for serial port TX
-      signal rx_data  : std_logic_vector(7 downto 0); -- bytes que se reciben
+      signal rx_data  : std_logic_vector(7 downto 0);  -- bytes que se reciben
       signal rx_valid : std_logic;
       signal rx_ready : std_logic;
 
       signal frame_dec_data  : std_logic_vector(61 downto 00);
       signal frame_dec_valid : std_logic;
       signal frame_dec_ready : std_logic;
-      
-      
+
+
       signal frame_enc_data  : std_logic_vector(61 downto 00);
       signal frame_enc_valid : std_logic;
       signal frame_enc_ready : std_logic;
-      
+
       --apb signals
-      
+
       signal psel    : std_logic;
       signal pwrite  : std_logic;
       signal penable : std_logic;
-      signal paddr   : std_logic_vector(23 DOWNTO 00);  
-      signal pwdata  : std_logic_vector(31 DOWNTO 00);
-      signal prdata  : std_logic_vector(31 DOWNTO 00);
+      signal paddr   : std_logic_vector(23 downto 00);
+      signal pwdata  : std_logic_vector(31 downto 00);
+      signal prdata  : std_logic_vector(31 downto 00);
       signal pready  : std_logic;
-      
-		constant CLK_FREQUENCY : natural := 50_000_000;
-		constant SERIAL_PORT_SPEED : natural := 9600;
-		
+
+      constant CLK_FREQUENCY     : natural := 50_000_000;
+      constant SERIAL_PORT_SPEED : natural := 9600;
+
 begin
-            
+
       counter  <= counter + 1 when rising_edge(clk);
       clk_slow <= counter(15);  -- 50 MHz / 2^16 = 763Hz for debouncing flip-flops
-      
+
       -- Debouncer circuit for external reset signal
       reset    <= external_reset when rising_edge(clk_slow);
       reset_n  <= not reset;
@@ -107,7 +107,7 @@ begin
 
 
       led <= frame_dec_data(31 downto 24);
-      
+
       div : process(clk, reset_n)
             -- ¿Cuántos periodos de reloj externo |clk| hay en un periodo de
             -- bit. Pues Fclk / bps. Así pues hay que generar un pulso de en16
@@ -115,7 +115,7 @@ begin
             --
             -- Fclk = 50 MHz, bps = 9600 => Cada 50e6/9600/16 = 326 con un
             -- error relativo del 0,15 %
-            variable c : natural range 0 to CLK_FREQUENCY/SERIAL_PORT_SPEED; --326;
+            variable c : natural range 0 to CLK_FREQUENCY/SERIAL_PORT_SPEED;  --326;
       begin
             if reset_n = '0' then
                   en16 <= '0';
@@ -129,8 +129,8 @@ begin
             end if;
       end process;
 
-      
-      
+
+
       -- Receptor del puerto serie
       urx : entity work.uart_rx port map (
             -- in
@@ -163,7 +163,7 @@ begin
       dec : entity work.frame_dec port map (
             clk         => clk,
             reset_n     => reset_n,
-				-- in
+            -- in
             octet_data  => rx_data,
             octet_valid => rx_valid,
             octet_ready => rx_ready,
@@ -171,45 +171,46 @@ begin
             frame_data  => frame_dec_data,
             frame_valid => frame_dec_valid,
             frame_ready => frame_dec_ready
-      );
+            );
 
 
 
-  enc : entity work.frame_enc port map (
-           reset_n     => reset_n,
-           clk         => clk,
-           octet_data  => tx_data,
-           octet_valid => tx_valid,
-           octet_ready => tx_ready,
-           frame_data  => frame_enc_data,
-           frame_valid => frame_enc_valid,
-           frame_ready => frame_enc_ready
-  );
-  
-  apb : entity work.apb_master port map (
+      enc : entity work.frame_enc port map (
+            reset_n     => reset_n,
+            clk         => clk,
+            octet_data  => tx_data,
+            octet_valid => tx_valid,
+            octet_ready => tx_ready,
+            frame_data  => frame_enc_data,
+            frame_valid => frame_enc_valid,
+            frame_ready => frame_enc_ready
+            );
 
-      clk         => clk,
-      reset_n     => reset_n,
-      -- frame i/o
-      frame_dec_data  => frame_dec_data,
-      frame_dec_valid => frame_dec_valid,
-      frame_dec_ready => frame_dec_ready, 
-      frame_enc_data  => frame_enc_data,
-      frame_enc_valid => frame_enc_valid,
-      frame_enc_ready => frame_enc_ready,  
-      --APB IF 
-      psel         => psel,
-      pwrite       => pwrite,
-      penable      => penable,
-      paddr        => paddr,
-      pwdata       => pwdata,
-      prdata       => prdata,
-      pready       => pready
-  );
+      apb : entity work.apb_master port map (
+
+            clk            => clk,
+            reset_n        => reset_n,
+            -- frame i/o
+            rx_frame_data  => frame_dec_data,
+            rx_frame_valid => frame_dec_valid,
+            rx_frame_ready => frame_dec_ready,
+            --
+            tx_frame_data  => frame_enc_data,
+            tx_frame_valid => frame_enc_valid,
+            tx_frame_ready => frame_enc_ready,
+            --APB IF 
+            psel           => psel,
+            pwrite         => pwrite,
+            penable        => penable,
+            paddr          => paddr,
+            pwdata         => pwdata,
+            prdata         => prdata,
+            pready         => pready
+            );
 
       seg : entity work.interface_7segx4_apb port map (
-            reset_n  => reset_n,
-            clk      => clk,
+            reset_n   => reset_n,
+            clk       => clk,
             psel      => psel,
             penable   => penable,
             pwrite    => pwrite,
@@ -220,7 +221,7 @@ begin
             prdata    => prdata,
             pready    => pready,
             do        => if7seg_do,
-            an        => if7seg_an  
-      );
-      
+            an        => if7seg_an
+            );
+
 end rtl;

@@ -194,7 +194,7 @@ begin
 
             p_crc : entity work.crc8d8 port map (
                   clk  => clk,
-                  rst  => crc_start,
+                  rs   => crc_start,
                   data => crc_data,
                   en   => crc_run,
                   crc  => crc_crc

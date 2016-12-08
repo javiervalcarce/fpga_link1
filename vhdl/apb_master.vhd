@@ -171,6 +171,7 @@ begin
     penable            <= '0';
     pwrite             <= '0';
     res_wr             <= '0';
+
     case state is
       when IDLE => psel <= '0'; penable <= '0'; pwrite <= '0'; rx_frame_ready_int <= '1';
       when SEL  => psel <= '0'; penable <= '0'; pwrite <= '0'; rx_frame_ready_int <= '0';
