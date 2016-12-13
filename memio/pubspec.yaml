@@ -1,0 +1,11 @@
+name: memio
+version: 0.1.0
+author: Javier Valcarce, <javier.valcarce@gmail.com>
+description: Memory I/O
+
+environment:
+  sdk: '>=1.12.0 <2.0.0'
+
+dependencies:
+  browser: ^0.10.0
+
