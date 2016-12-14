@@ -39,7 +39,12 @@ FpgaLink1::~FpgaLink1() {
 FpgaLink1::Error FpgaLink1::Init() {
       int r;
 
-      assert(framer_.Init() == Framer::Error::No);
+      Framer::Error e;
+      e = framer_.Init();
+      if (e != Framer::Error::No) {
+            //printf("framer returned %d\n", (int) e);
+            return Error::NoPermission;
+      }
       
       r = pthread_create(&thread_, &thread_attr_, FpgaLink1::ThreadFn, this);
       if (r != 0) {

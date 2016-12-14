@@ -27,8 +27,14 @@ set (fpgalink1_srv_SRCS src/main_srv.cpp)
 
 set (CMAKE_VERBOSE_MAKEFILE on)
 
+set (LIBREST_DIR /home/javier/librest)
+
 # Directorios de ficheros cabecera y de bibliotecas (opciones -I y -L respectivamente)
 include_directories (src/include)
+include_directories (${LIBREST_DIR}/src/include)
+link_directories    (${LIBREST_DIR}/build)
+
+
 
 # opciones de compilación (CFLAGS)
 add_definitions ("-Wall -Wextra -g -std=c++11")
@@ -39,7 +45,7 @@ set_target_properties(fpgalink1 PROPERTIES VERSION ${FPGALINK1_VERSION_STRING})
 add_executable(fpgalink1_cli ${fpgalink1_cli_SRCS})
 add_executable(fpgalink1_srv ${fpgalink1_srv_SRCS})
 
-target_link_libraries(fpgalink1_cli fpgalink1 m pthread)
+target_link_libraries(fpgalink1_cli fpgalink1 m pthread rest)
 target_link_libraries(fpgalink1_srv fpgalink1 m pthread)
 
 # Test unitarios

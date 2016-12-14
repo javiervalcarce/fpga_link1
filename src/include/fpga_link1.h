@@ -39,6 +39,9 @@ namespace fpga_link1 {
                   // The specified device does not exist.
                   NoSuchDevice,
 
+                  // Insufficient permissions.
+                  NoPermission,
+                        
                   // Error while creating a the internal thread (with pthread_create).
                   ThreadCreation,
                   
